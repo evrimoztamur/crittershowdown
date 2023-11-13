@@ -8,7 +8,7 @@ use web_sys::{Request, RequestInit, Response};
 use crate::storage;
 
 #[cfg(feature = "deploy")]
-const API_URL: &str = "https://maginet.evrim.zone";
+const API_URL: &str = "https://crittershowdown.evrim.zone";
 #[cfg(not(feature = "deploy"))]
 const API_URL: &str = "https://tunnel.evrim.zone";
 

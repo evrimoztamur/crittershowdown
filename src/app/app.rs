@@ -1,23 +1,13 @@
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
-use shared::{Board, Level, LobbyError, SessionRequest};
+use shared::{LobbyError, SessionRequest};
 use wasm_bindgen::JsValue;
 use web_sys::{
     console, CanvasRenderingContext2d, DomRectReadOnly, FocusEvent, HtmlCanvasElement,
     HtmlInputElement, KeyboardEvent, MouseEvent, TouchEvent,
 };
 
-use super::{
-    ArenaMenu, AudioSystem, ClipId, Editor, EditorPreview, Game, MainMenu, Pointer, SkirmishMenu,
-    TeleportMenu, Tutorial, BOARD_SCALE,
-};
-use crate::{
-    app::State,
-    draw::{draw_board, draw_sprite},
-    net::get_session_id,
-    storage, window,
-};
+use super::{AudioSystem, ClipId, Game, MainMenu, Pointer, BOARD_SCALE};
+use crate::{app::State, draw::draw_sprite, net::get_session_id, storage, window};
 
 /// Errors concerning the [`App`].
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,13 +21,7 @@ impl From<LobbyError> for AppError {
 
 pub enum StateSort {
     MainMenu(MainMenu),
-    ArenaMenu(ArenaMenu),
-    SkirmishMenu(SkirmishMenu),
     Game(Game),
-    Editor(Editor),
-    TeleportMenu(TeleportMenu),
-    EditorPreview(EditorPreview),
-    Tutorial(Tutorial),
 }
 
 pub struct AppContext {
@@ -120,46 +104,12 @@ impl App {
 
         if !self.atlas_complete {
             self.atlas_complete = true;
-            draw_board(
-                atlas,
-                256.0,
-                256.0,
-                &Board::unchecked(2, 2, shared::BoardStyle::Grass),
-                2,
-                2,
-            )?;
-            draw_board(
-                atlas,
-                256.0,
-                320.0,
-                &Board::unchecked(4, 2, shared::BoardStyle::Grass),
-                4,
-                2,
-            )?;
         } else {
             result = match &mut self.state_sort {
-                StateSort::SkirmishMenu(state) => {
-                    state.draw(context, interface_context, atlas, &self.app_context)
-                }
-                StateSort::ArenaMenu(state) => {
-                    state.draw(context, interface_context, atlas, &self.app_context)
-                }
-                StateSort::TeleportMenu(state) => {
-                    state.draw(context, interface_context, atlas, &self.app_context)
-                }
                 StateSort::Game(state) => {
                     state.draw(context, interface_context, atlas, &self.app_context)
                 }
                 StateSort::MainMenu(state) => {
-                    state.draw(context, interface_context, atlas, &self.app_context)
-                }
-                StateSort::Editor(state) => {
-                    state.draw(context, interface_context, atlas, &self.app_context)
-                }
-                StateSort::EditorPreview(state) => {
-                    state.draw(context, interface_context, atlas, &self.app_context)
-                }
-                StateSort::Tutorial(state) => {
                     state.draw(context, interface_context, atlas, &self.app_context)
                 }
             };
@@ -189,14 +139,8 @@ impl App {
 
     pub fn tick(&mut self, text_input: &HtmlInputElement) {
         let next_state = match &mut self.state_sort {
-            StateSort::SkirmishMenu(state) => state.tick(text_input, &self.app_context),
-            StateSort::ArenaMenu(state) => state.tick(text_input, &self.app_context),
-            StateSort::TeleportMenu(state) => state.tick(text_input, &self.app_context),
             StateSort::Game(state) => state.tick(text_input, &self.app_context),
             StateSort::MainMenu(state) => state.tick(text_input, &self.app_context),
-            StateSort::Editor(state) => state.tick(text_input, &self.app_context),
-            StateSort::EditorPreview(state) => state.tick(text_input, &self.app_context),
-            StateSort::Tutorial(state) => state.tick(text_input, &self.app_context),
         };
 
         if let Some(next_state) = next_state {
@@ -246,55 +190,13 @@ impl App {
         event.prevent_default();
     }
 
-    fn lobby_touch(
-        lobby_state: &mut Game,
-        pointer: &Pointer,
-        pointer_location: (i32, i32),
-    ) -> bool {
-        if pointer_location.0 < 0 || lobby_state.is_interface_active() {
-            return true;
-        } else {
-            let board_offset = lobby_state.board_offset();
-
-            if let (Some(current_tile), Some(last_tile)) = (
-                lobby_state.location_as_position(pointer_location, board_offset, BOARD_SCALE),
-                lobby_state.location_as_position(pointer.location, board_offset, BOARD_SCALE),
-            ) {
-                if current_tile == last_tile || lobby_state.live_occupied(current_tile) {
-                    return true;
-                }
-            }
-        }
-
-        false
-    }
-
     pub fn on_touch_start(&mut self, bound: &DomRectReadOnly, event: TouchEvent) {
         if let Some(touch) = event.target_touches().item(0) {
             let x = touch.page_x() - bound.left() as i32;
             let y = touch.page_y() - bound.top() as i32;
+
             let pointer_location =
                 App::transform_pointer(&self.app_context.canvas_settings, bound, x, y);
-
-            {
-                match &mut self.state_sort {
-                    StateSort::Game(lobby_state) => {
-                        self.app_context.pointer.button = App::lobby_touch(
-                            lobby_state,
-                            &self.app_context.pointer,
-                            pointer_location,
-                        );
-                    }
-                    StateSort::Tutorial(state) => {
-                        self.app_context.pointer.button = App::lobby_touch(
-                            &mut state.game_state,
-                            &self.app_context.pointer,
-                            pointer_location,
-                        );
-                    }
-                    _ => self.app_context.pointer.button = true,
-                };
-            }
 
             self.app_context.pointer.location = pointer_location;
         }
@@ -346,9 +248,6 @@ impl App {
         match &mut self.state_sort {
             StateSort::Game(state) => {
                 match event.code().as_str() {
-                    "KeyB" => {
-                        state.take_best_turn();
-                    }
                     "KeyM" => {
                         console::log_1(&format!("{:?}", state.lobby()).into());
                     }
@@ -366,35 +265,6 @@ impl App {
         self.set_session_id(session_id.clone());
 
         storage().map(|storage| storage.set_item("session_id", session_id.as_str()));
-    }
-
-    fn load_levels() -> HashMap<usize, Level> {
-        serde_json::from_str(
-            storage()
-                .and_then(|storage| storage.get_item("levels").unwrap_or_default())
-                .unwrap_or_default()
-                .as_str(),
-        )
-        .unwrap_or_default()
-    }
-
-    fn save_levels(levels: HashMap<usize, Level>) {
-        let value = serde_json::to_string(&levels).unwrap();
-        storage().and_then(|storage| storage.set_item("levels", value.as_str()).ok());
-    }
-
-    pub fn load_level(level_id: usize) -> Option<Level> {
-        let levels = Self::load_levels();
-
-        levels.get(&level_id).cloned()
-    }
-
-    pub fn save_level(level_id: usize, level: Level) {
-        let mut levels = Self::load_levels();
-
-        levels.insert(level_id, level);
-
-        Self::save_levels(levels);
     }
 
     pub fn kv_set(key: &str, value: &str) {

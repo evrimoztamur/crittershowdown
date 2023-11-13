@@ -6,6 +6,9 @@ use rand_chacha::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::Message;
+use crate::{Game, Team};
+
 #[cfg(feature = "server")]
 // use crate::Turn;
 // use crate::{Board, Game, Level, Mage, MageSort, Message, Team};
@@ -50,6 +53,24 @@ impl PartialEq for Player {
     }
 }
 
+/// Settings for lobby
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct LobbySettings {
+    sort: LobbySort,
+}
+
+impl LobbySettings {
+    /// Create a new instance of [`LobbySettings`].
+    pub fn new(sort: LobbySort) -> LobbySettings {
+        LobbySettings { sort }
+    }
+
+    /// Returns the [`LobbySort`].
+    pub fn sort(&self) -> &LobbySort {
+        &self.sort
+    }
+}
+
 /// [`Lobby`] is a `struct` which contains all the information necessary for executing a game.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Lobby {
@@ -65,11 +86,10 @@ pub struct Lobby {
 impl Lobby {
     /// Instantiates the [`Lobby`] `struct` with a given [`LobbySort`].
     pub fn new(settings: LobbySettings) -> Lobby {
-        let mut rng = ChaCha8Rng::seed_from_u64(settings.seed);
+        // let mut rng = ChaCha8Rng::seed_from_u64(settings.seed);
 
         Lobby {
-            game: Game::new(&settings.level(&mut rng), settings.can_stalemate)
-                .expect("game should be instantiable with default values"),
+            game: Game::default(),
             players: HashMap::new(),
             player_slots: VecDeque::from([Player::new(Team::Red), Player::new(Team::Blue)]),
             ticks: 0,
@@ -135,9 +155,9 @@ impl Lobby {
             match self.players.get(&session_id) {
                 Some(player) => {
                     if self.game.turn_for() == player.team {
-                        if let Message::Move(Turn(from, to)) = message {
-                            self.game.take_move(from, to);
-                        }
+                        // if let Message::Move(Turn(from, to)) = message {
+                        //     self.game.take_move(from, to);
+                        // }
 
                         Ok(())
                     } else {
@@ -184,12 +204,12 @@ impl Lobby {
 
     /// Determines if the game is local (`true`) or online.
     pub fn is_local(&self) -> bool {
-        !matches!(self.settings.lobby_sort, LobbySort::Online(_))
+        !matches!(self.settings.sort, LobbySort::Online(_))
     }
 
     /// Returns `true` for [`LobbySort::LocalAI`].
     pub fn has_ai(&self) -> bool {
-        matches!(self.settings.lobby_sort, LobbySort::LocalAI)
+        matches!(self.settings.sort, LobbySort::LocalAI)
     }
 
     /// Determines if the given session ID is the one taking its turn.
@@ -221,15 +241,16 @@ impl Lobby {
     pub fn players(&self) -> &HashMap<String, Player> {
         &self.players
     }
+}
 
-    /// Rewinds the [`Game`] by `delta` turns.
-    pub fn rewind(&mut self, delta: usize) {
-        let rewinded_game = self.game.rewind(delta);
-
-        self.game = rewinded_game;
-
-        // This is a state-modfying action and in turn must be communicated with the connected clients.
-        // Rewinding is currently only available in local lobbies, but take-backs may be implemented.
-        self.tick();
-    }
+/// Loadout methods.
+#[derive(PartialEq, Debug, Serialize, Deserialize, Clone, Default)]
+pub enum LobbySort {
+    /// Choose the default order..
+    #[default]
+    Local,
+    /// Versus AI.
+    LocalAI,
+    /// Online.
+    Online(u16),
 }

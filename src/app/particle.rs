@@ -47,16 +47,6 @@ pub enum ParticleSort {
     Shield,
     Beam,
 }
-impl ParticleSort {
-    pub(crate) fn for_powerup(powerup: &shared::PowerUp) -> Option<ParticleSort> {
-        match powerup {
-            shared::PowerUp::Shield => Some(Self::Shield),
-            shared::PowerUp::Beam => Some(Self::Beam),
-            shared::PowerUp::Diagonal => Some(Self::Diagonals),
-            shared::PowerUp::Boulder(_) => None,
-        }
-    }
-}
 
 #[derive(Copy, Clone)]
 pub struct Particle {

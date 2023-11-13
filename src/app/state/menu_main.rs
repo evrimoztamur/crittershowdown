@@ -1,20 +1,16 @@
-use shared::{Board, LoadoutMethod, LobbySettings, LobbySort};
+use shared::{LobbySettings, LobbySort};
 use wasm_bindgen::JsValue;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
 
-use super::{ArenaMenu, Editor, Game, SkirmishMenu, State, Tutorial};
-use crate::{
-    app::{
-        Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme,
-        LabelTrim, Pointer, StateSort, UIElement, UIEvent,
-    },
-    window,
+use super::{Game, State};
+use crate::app::{
+    Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme, LabelTrim,
+    Pointer, StateSort, UIElement, UIEvent,
 };
 
 pub struct MainMenu {
     interface: Interface,
     button_reset: ConfirmButtonElement,
-    preview_state: Game,
 }
 
 const BUTTON_ARENA: usize = 20;
@@ -38,23 +34,10 @@ impl State for MainMenu {
 
         context.translate(-72.0, 0.0)?;
 
-        self.preview_state.draw_game(
-            context,
-            interface_context,
-            atlas,
-            frame,
-            &Pointer::default(),
-        )?;
-
         context.restore();
 
         self.interface
             .draw(interface_context, atlas, pointer, frame)?;
-
-        if self.preview_state.lobby().finished() {
-            self.button_reset
-                .draw(interface_context, atlas, pointer, frame)?;
-        }
 
         Ok(())
     }
@@ -67,34 +50,8 @@ impl State for MainMenu {
         let frame = app_context.frame;
         let pointer = &app_context.pointer;
 
-        self.preview_state.tick_game(frame, app_context);
-
-        if self.preview_state.frames_since_last_move(frame) > 70 {
-            self.preview_state.take_best_turn_quick();
-        }
-
         if let Some(UIEvent::ButtonClick(value, clip_id)) = self.interface.tick(pointer) {
             app_context.audio_system.play_clip_option(clip_id);
-
-            match value {
-                BUTTON_ARENA => {
-                    return Some(StateSort::ArenaMenu(ArenaMenu::default()));
-                }
-                BUTTON_EDITOR => {
-                    return Some(StateSort::Editor(Editor::default()));
-                }
-                BUTTON_SKIRMISH => {
-                    return Some(StateSort::SkirmishMenu(SkirmishMenu::default()));
-                }
-                BUTTON_TUTORIAL => {
-                    return Some(StateSort::Tutorial(Tutorial::default()));
-                }
-                _ => (),
-            }
-        }
-
-        if self.preview_state.lobby().finished() && self.button_reset.tick(pointer).is_some() {
-            return Some(StateSort::MainMenu(MainMenu::default()));
         }
 
         None
@@ -158,12 +115,6 @@ impl Default for MainMenu {
         MainMenu {
             interface: root_element,
             button_reset,
-            preview_state: Game::new(LobbySettings {
-                lobby_sort: LobbySort::Local,
-                loadout_method: LoadoutMethod::DefaultBoard(Board::new(6, 7).unwrap()),
-                seed: window().performance().unwrap().now() as u64,
-                can_stalemate: true,
-            }),
         }
     }
 }

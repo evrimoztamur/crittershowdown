@@ -1,6 +1,5 @@
 use crate::RESOURCE_BASE_URL;
 use js_sys::{ArrayBuffer, Math, Promise, Uint8Array};
-use shared::PowerUp;
 use std::collections::HashMap;
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::JsFuture;
@@ -126,14 +125,6 @@ impl AudioSystem {
         }
     }
 
-    pub fn play_powerup(&self, powerup: PowerUp) {
-        match powerup {
-            PowerUp::Shield => self.play_clip(ClipId::Shield),
-            PowerUp::Beam => self.play_clip(ClipId::Beam),
-            PowerUp::Diagonal => self.play_clip(ClipId::Diagonal),
-            _ => (),
-        }
-    }
 
     pub async fn populate_audio(&mut self) {
         {

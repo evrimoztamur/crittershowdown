@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::{Lobby, LobbyError};
+use crate::{Lobby, LobbyError, LobbySettings};
 
 /// A network message.
 #[derive(Debug, Serialize, Deserialize)]
@@ -31,4 +31,11 @@ pub struct SessionMessage {
     pub session_id: String,
     /// A [`Message`] payload.
     pub message: Message,
+}
+
+/// An HTTP request made with a session ID, containing a [`Message`] payload.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionNewLobby {
+    /// A [`Message`] payload.
+    pub lobby_settings: LobbySettings,
 }
