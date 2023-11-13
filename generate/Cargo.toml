@@ -1,0 +1,12 @@
+[package]
+name = "generate"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0.160", features = ["derive", "rc"] }
+shared = { path = "../shared", features = ["server"] }
+serde_json = "1.0.94"
+rayon = "1.7.0"

@@ -1,0 +1,10 @@
+debug/
+deploy/
+lobbies/
+pkg/
+target/
+
+**/*.rs.bk
+
+*.pdb
+*.zip
