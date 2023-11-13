@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use crate::Message;
 use crate::{Game, Team};
 
-#[cfg(feature = "server")]
+// #[cfg(feature = "server")]
 // use crate::Turn;
 // use crate::{Board, Game, Level, Mage, MageSort, Message, Team};
 
@@ -20,14 +20,14 @@ pub type LobbyID = u16;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LobbyError(pub String);
 
-// impl<T> From<Result<T, LobbyError>> for Message {
-//     fn from(result: Result<T, LobbyError>) -> Self {
-//         match result {
-//             Ok(_) => Message::Ok,
-//             Err(err) => Message::LobbyError(err),
-//         }
-//     }
-// }
+impl<T> From<Result<T, LobbyError>> for Message {
+    fn from(result: Result<T, LobbyError>) -> Self {
+        match result {
+            Ok(_) => Message::Ok,
+            Err(err) => Message::LobbyError(err),
+        }
+    }
+}
 
 /// A player in a lobby, used in online lobbies only.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -68,6 +68,11 @@ impl LobbySettings {
     /// Returns the [`LobbySort`].
     pub fn sort(&self) -> &LobbySort {
         &self.sort
+    }
+
+    /// Sets
+    pub fn set_sort(&mut self, sort: LobbySort) {
+        self.sort = sort;
     }
 }
 

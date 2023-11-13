@@ -10,5 +10,7 @@ server = []
 data-encoding = "2.4.0"
 data-encoding-macro = "0.1.13"
 itertools = "0.10.5"
+nalgebra = "0.32.3"
 rand_chacha = "0.3.1"
+rapier2d = { version = "0.17.2", features = ["enhanced-determinism"] }
 serde = { version = "1.0.160", features = ["derive"] }

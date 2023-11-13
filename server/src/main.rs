@@ -12,7 +12,7 @@ use axum::{
 };
 use rand::Rng;
 use shared::{
-    Lobby, LobbyError, LobbySort, Message, SessionMessage, SessionNewLobby, SessionRequest, Turn,
+    Lobby, LobbyError, LobbySort, Message, SessionMessage, SessionNewLobby, SessionRequest,
 };
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -55,7 +55,9 @@ async fn create_lobby(
     let lobby_id = generate_lobby_id();
     let mut lobbies = state.lobbies.lock().unwrap();
 
-    session_message.lobby_settings.lobby_sort = LobbySort::Online(lobby_id);
+    session_message
+        .lobby_settings
+        .set_sort(LobbySort::Online(lobby_id));
     let lobby = Lobby::new(session_message.lobby_settings);
 
     lobbies.insert(lobby_id, lobby.clone());
@@ -70,13 +72,13 @@ async fn get_turns_since(
     let lobbies = state.lobbies.lock().unwrap();
 
     if let Some(lobby) = lobbies.get(&id) {
-        if lobby.all_ready() {
-            let turns_since: Vec<Turn> =
-                lobby.game.turns_since(since).into_iter().cloned().collect();
-            Json(Message::Moves(turns_since))
-        } else {
+        // if lobby.all_ready() {
+        //     let turns_since: Vec<Turn> =
+        //         lobby.game.turns_since(since).into_iter().cloned().collect();
+        //     Json(Message::Moves(turns_since))
+        // } else {
             Json(Message::Lobby(Box::new(lobby.clone())))
-        }
+        // }
     } else {
         Json(Message::LobbyError(LobbyError(
             "lobby does not exist".to_string(),

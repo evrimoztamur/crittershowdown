@@ -1,6 +1,6 @@
 use futures::TryFutureExt;
 use js_sys::Promise;
-use shared::{LobbyID, LobbySettings, Message, SessionMessage, SessionNewLobby, SessionRequest};
+use shared::{LobbySettings, Message, SessionMessage, SessionNewLobby, SessionRequest, LobbyID};
 use wasm_bindgen::{JsCast, JsValue};
 use wasm_bindgen_futures::{future_to_promise, JsFuture};
 use web_sys::{Request, RequestInit, Response};

@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use shared::{LobbyError, SessionRequest};
+use shared::{LobbyError, LobbySettings, SessionRequest};
 use wasm_bindgen::JsValue;
 use web_sys::{
     console, CanvasRenderingContext2d, DomRectReadOnly, FocusEvent, HtmlCanvasElement,
@@ -50,7 +50,7 @@ impl App {
                 text_input: None,
                 audio_system,
             },
-            state_sort: StateSort::MainMenu(MainMenu::default()),
+            state_sort: StateSort::Game(Game::new(LobbySettings::new(shared::LobbySort::Local))),
             atlas_complete: false,
         }
     }

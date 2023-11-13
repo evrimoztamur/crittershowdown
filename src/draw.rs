@@ -19,7 +19,7 @@ pub fn draw_sprite(
     dy: f64,
 ) -> Result<(), JsValue> {
     context.draw_image_with_html_canvas_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
-        atlas, sx, sy, sw, sh, dx, dy, sw, sh,
+        atlas, sx, sy, sw, sh, dx.floor(), dy.floor(), sw, sh,
     )?;
 
     Ok(())

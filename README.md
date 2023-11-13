@@ -12,10 +12,10 @@ Watch `src` and `shared` for client-related source changes, and rebuild deployab
 
 #### Live
 
-```watchexec -w src -w shared -r -e rs -- wasm-pack build --target web --debug --out-name crittershowdown --out-dir static/js/pkg -- --features deploy```
+```watchexec -w src -w shared -r -e rs -- wasm-pack build --target web --release --out-name crittershowdown --out-dir static/js/pkg -- --features deploy```
 
 #### Local
 
 If running locally via the tunnel, do _not_ enable the `deploy` feature:
 
-```watchexec -w src -w shared -r -e rs -- wasm-pack build --target web --debug --out-name crittershowdown --out-dir static/js/pkg```
+```watchexec -w src -w shared -r -e rs -- wasm-pack build --target web --release --out-name crittershowdown --out-dir static/js/pkg```

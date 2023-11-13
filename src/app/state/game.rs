@@ -1,22 +1,17 @@
 use std::{cell::RefCell, rc::Rc};
 
-use shared::{Lobby, LobbyError, LobbyID, LobbySettings, LobbySort, Message, Team};
+use shared::{Lobby, LobbySettings, Message, Physics};
 use wasm_bindgen::{prelude::Closure, JsValue};
 use web_sys::{console, CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
 
 use super::State;
 use crate::{
     app::{
-        Alignment, App, AppContext, ButtonElement, ClipId, ConfirmButtonElement, Interface,
-        LabelTheme, LabelTrim, Particle, ParticleSort, ParticleSystem, Pointer, StateSort,
-        ToggleButtonElement, UIElement, UIEvent, BOARD_SCALE,
+        Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme,
+        LabelTrim, ParticleSystem, StateSort, ToggleButtonElement, UIElement,
     },
     draw::draw_sprite,
-    net::{
-        create_new_lobby, fetch, request_state, request_turns_since, send_message, send_ready,
-        send_rematch, MessagePool,
-    },
-    tuple_as, window,
+    net::{create_new_lobby, MessagePool},
 };
 
 const BUTTON_REMATCH: usize = 1;
@@ -31,6 +26,7 @@ pub struct Game {
     message_pool: Rc<RefCell<MessagePool>>,
     message_closure: Closure<dyn FnMut(JsValue)>,
     shake_frame: (u64, usize),
+    physics: Physics,
 }
 
 impl Game {
@@ -98,6 +94,7 @@ impl Game {
             message_pool,
             message_closure,
             shake_frame: (0, 0),
+            physics: Physics::from_settings(),
         }
     }
 
@@ -129,6 +126,35 @@ impl State for Game {
         let frame = app_context.frame;
         let pointer = &app_context.pointer;
 
+        // if let Some(ball_position) = self.physics.ball_position() {
+        //     draw_sprite(
+        //         context,
+        //         atlas,
+        //         32.0,
+        //         320.0,
+        //         32.0,
+        //         32.0,
+        //         ball_position.x as f64 - 16.0,
+        //         ball_position.y as f64 - 16.0,
+        //     )?;
+
+        //     console::log_1(&format!("Ball altitude: {}", ball_position.y).into());
+
+        // }
+
+        for ball_position in self.physics.ball_positions() {
+            draw_sprite(
+                context,
+                atlas,
+                32.0,
+                320.0,
+                32.0,
+                32.0,
+                ball_position.x as f64 - 16.0,
+                ball_position.y as f64 - 16.0,
+            )?;
+        }
+
         Ok(())
     }
 
@@ -141,6 +167,8 @@ impl State for Game {
         let pointer = &app_context.pointer;
 
         let message_pool = self.message_pool.clone();
+
+        self.physics.tick();
 
         None
     }
