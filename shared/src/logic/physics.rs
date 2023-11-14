@@ -27,39 +27,6 @@ pub struct Physics {
     query_pipeline: QueryPipeline,
 }
 
-impl Default for Physics {
-    fn default() -> Physics {
-        /* Create all structures necessary for the simulation. */
-        let rigid_body_set = RigidBodySet::new();
-        let collider_set = ColliderSet::new();
-        let gravity = vector![0.0, 0.0];
-        let integration_parameters = IntegrationParameters::default();
-        let physics_pipeline = PhysicsPipeline::new();
-        let island_manager = IslandManager::new();
-        let broad_phase = BroadPhase::new();
-        let narrow_phase = NarrowPhase::new();
-        let impulse_joint_set = ImpulseJointSet::new();
-        let multibody_joint_set = MultibodyJointSet::new();
-        let ccd_solver = CCDSolver::new();
-        let query_pipeline = QueryPipeline::new();
-
-        Physics {
-            physics_pipeline,
-            gravity,
-            integration_parameters,
-            island_manager,
-            broad_phase,
-            narrow_phase,
-            impulse_joint_set,
-            multibody_joint_set,
-            ccd_solver,
-            rigid_body_set,
-            collider_set,
-            query_pipeline,
-        }
-    }
-}
-
 impl Physics {
     /// TODO docs
     pub fn from_settings() -> Physics {
@@ -89,28 +56,23 @@ impl Physics {
             .build();
         physics.collider_set.insert(collider);
 
-        // /* Create the ground. */
-        // let collider = ColliderBuilder::cuboid(100.0, 0.1).build();
-        // physics.collider_set.insert(collider);
-
-        for i in 0..16 {
-            /* Create the bouncing ball. */
-            let rigid_body = RigidBodyBuilder::dynamic()
-                .translation(vector![0.0 + (i as f32).cos(), 0.0 + (i as f32).sin()])
-                .linear_damping(0.9995)
-                .build();
-            let collider = ColliderBuilder::ball(0.5).restitution(1.0).build();
-            let ball_body_handle = physics.rigid_body_set.insert(rigid_body);
-            physics.collider_set.insert_with_parent(
-                collider,
-                ball_body_handle,
-                &mut physics.rigid_body_set,
-            );
-        }
-
-        // physics.ball_body_handle = Some(ball_body_handle);
-
         physics
+    }
+
+    /// Inserts a new [`RigidBody`] for a [`Bug`].
+    pub fn insert_bug(&mut self, translation: Vector2<f32>) -> RigidBodyHandle {
+        let rigid_body = RigidBodyBuilder::dynamic()
+            .translation(translation)
+            .linear_damping(0.9995)
+            .build();
+
+        let collider = ColliderBuilder::ball(0.5).restitution(1.0).build();
+        let ball_body_handle = self.rigid_body_set.insert(rigid_body);
+
+        self.collider_set
+            .insert_with_parent(collider, ball_body_handle, &mut self.rigid_body_set);
+
+        ball_body_handle
     }
 
     /// TODO docs
@@ -133,17 +95,11 @@ impl Physics {
         );
     }
 
-    /// TODO d
-    /// TODO docsocs
-    pub fn ball_positions(&self) -> Vec<Vector2<f32>> {
-        self.rigid_body_set
-            .iter()
-            .map(|(rbh, rb)| rb.translation().scale(16.0) + vector![128.0, 128.0])
-            .collect()
-    }
-
-    /// TODO docs
-    pub fn intersecting_collider(&self, point: Point2<f32>) -> Option<(&Vector2<f32>, PointProjection)> {
+    /// Retrieves the closest [`ColliderHandle`] which intersects with a [`Point2`].
+    pub fn intersecting_collider(
+        &self,
+        point: Point2<f32>,
+    ) -> Option<(ColliderHandle, PointProjection)> {
         let solid = true;
         let filter = QueryFilter::default();
 
@@ -155,19 +111,64 @@ impl Physics {
                 solid,
                 filter,
             )
-            .map_or(None, |(collider_handle, projection)| {
-                if projection.is_inside {
+            .map_or(None, |(collider_handle, point_projection)| {
+                if point_projection.is_inside {
                     let a = &self.collider_set[collider_handle];
-                    Some((a.translation(), projection))
+                    Some((collider_handle, point_projection))
                 } else {
                     None
                 }
             })
-        // self.query_pipeline.intersections_with_point(&self.rigid_body_set, &self.collider_set, &point, filter, |handle| {
-        //     // Callback called on each collider with a shape containing the point.
-        //     println!("The collider {:?} contains the point.", handle);
-        //     // Return `false` instead if we want to stop searching for other colliders containing this point.
-        //     true
-        // });
+    }
+}
+
+impl Clone for Physics {
+    fn clone(&self) -> Self {
+        Self {
+            physics_pipeline: PhysicsPipeline::default(),
+            gravity: self.gravity.clone(),
+            integration_parameters: self.integration_parameters.clone(),
+            island_manager: self.island_manager.clone(),
+            broad_phase: self.broad_phase.clone(),
+            narrow_phase: self.narrow_phase.clone(),
+            impulse_joint_set: self.impulse_joint_set.clone(),
+            multibody_joint_set: self.multibody_joint_set.clone(),
+            ccd_solver: self.ccd_solver.clone(),
+            rigid_body_set: self.rigid_body_set.clone(),
+            collider_set: self.collider_set.clone(),
+            query_pipeline: self.query_pipeline.clone(),
+        }
+    }
+}
+
+impl Default for Physics {
+    fn default() -> Physics {
+        let rigid_body_set = RigidBodySet::new();
+        let collider_set = ColliderSet::new();
+        let gravity = vector![0.0, 0.0];
+        let integration_parameters = IntegrationParameters::default();
+        let physics_pipeline = PhysicsPipeline::new();
+        let island_manager = IslandManager::new();
+        let broad_phase = BroadPhase::new();
+        let narrow_phase = NarrowPhase::new();
+        let impulse_joint_set = ImpulseJointSet::new();
+        let multibody_joint_set = MultibodyJointSet::new();
+        let ccd_solver = CCDSolver::new();
+        let query_pipeline = QueryPipeline::new();
+
+        Physics {
+            physics_pipeline,
+            gravity,
+            integration_parameters,
+            island_manager,
+            broad_phase,
+            narrow_phase,
+            impulse_joint_set,
+            multibody_joint_set,
+            ccd_solver,
+            rigid_body_set,
+            collider_set,
+            query_pipeline,
+        }
     }
 }

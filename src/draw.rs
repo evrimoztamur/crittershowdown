@@ -1,5 +1,7 @@
 use std::f64::consts::PI;
 
+use nalgebra::Vector2;
+use shared::Bug;
 use wasm_bindgen::{JsCast, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
@@ -56,6 +58,36 @@ pub fn draw_image_centered(
     )?;
 
     Ok(())
+}
+
+const LOCAL_SCALE: f64 = 16.0;
+
+pub fn local_to_screen(local: &Vector2<f32>) -> (f64, f64) {
+    (
+        local.x as f64 * LOCAL_SCALE + 128.0,
+        local.y as f64 * LOCAL_SCALE + 128.0,
+    )
+}
+
+pub fn draw_bug(
+    context: &CanvasRenderingContext2d,
+    atlas: &HtmlCanvasElement,
+    bug: &Bug,
+    index: usize,
+    frame: usize,
+) -> Result<(), JsValue> {
+    let (dx, dy) = local_to_screen(bug.rigid_body.translation());
+
+    draw_image_centered(
+        context,
+        atlas,
+        16.0 * ((index % 2) as f64),
+        16.0 * (((frame / (6 + (index % 3)) + (index % 3)) % 2) as f64),
+        16.0,
+        16.0,
+        dx,
+        dy,
+    )
 }
 
 // pub struct Sprite {
@@ -160,7 +192,7 @@ pub fn draw_particle(
     context: &CanvasRenderingContext2d,
     atlas: &HtmlCanvasElement,
     particle: &Particle,
-    frame: u64,
+    frame: usize,
 ) -> Result<(), JsValue> {
     let board_scale = tuple_as!(BOARD_SCALE, f64);
 
@@ -171,8 +203,10 @@ pub fn draw_particle(
     )?;
 
     let spin = particle.lifetime;
-    let cycle =
-        frame + (particle.position.0 * 16.0) as u64 + (particle.position.1 * 16.0) as u64 + spin;
+    let cycle = frame
+        + (particle.position.0 * 16.0) as usize
+        + (particle.position.1 * 16.0) as usize
+        + spin;
 
     context.rotate((spin / 5) as f64 * std::f64::consts::PI / 2.0)?;
     // context.rotate(frame as f64 * 0.1)?;
@@ -226,7 +260,7 @@ pub fn draw_label(
     color: &str,
     content: &ContentElement,
     pointer: &Pointer,
-    frame: u64,
+    frame: usize,
     trim: &LabelTrim,
     snip_content: bool,
 ) -> Result<(), JsValue> {

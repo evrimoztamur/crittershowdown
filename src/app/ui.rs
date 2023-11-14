@@ -20,7 +20,7 @@ pub trait UIElement {
         context: &CanvasRenderingContext2d,
         atlas: &HtmlCanvasElement,
         pointer: &Pointer,
-        frame: u64,
+        frame: usize,
     ) -> Result<(), JsValue>;
 }
 
@@ -48,7 +48,7 @@ impl UIElement for ContentElement {
         context: &CanvasRenderingContext2d,
         atlas: &HtmlCanvasElement,
         _pointer: &Pointer,
-        _frame: u64,
+        _frame: usize,
     ) -> Result<(), JsValue> {
         context.save();
 
@@ -150,7 +150,7 @@ impl UIElement for ButtonElement {
         context: &CanvasRenderingContext2d,
         atlas: &HtmlCanvasElement,
         pointer: &Pointer,
-        frame: u64,
+        frame: usize,
     ) -> Result<(), JsValue> {
         let color = match self.class {
             LabelTheme::Default => {
@@ -256,7 +256,7 @@ impl UIElement for ConfirmButtonElement {
         context: &CanvasRenderingContext2d,
         atlas: &HtmlCanvasElement,
         pointer: &Pointer,
-        frame: u64,
+        frame: usize,
     ) -> Result<(), JsValue> {
         context.save();
 
@@ -335,7 +335,7 @@ impl UIElement for ToggleButtonElement {
         context: &CanvasRenderingContext2d,
         atlas: &HtmlCanvasElement,
         pointer: &Pointer,
-        frame: u64,
+        frame: usize,
     ) -> Result<(), JsValue> {
         self.button.draw(context, atlas, pointer, frame)
     }
@@ -398,7 +398,7 @@ impl UIElement for ButtonGroupElement {
         context: &CanvasRenderingContext2d,
         atlas: &HtmlCanvasElement,
         pointer: &Pointer,
-        frame: u64,
+        frame: usize,
     ) -> Result<(), JsValue> {
         context.save();
 
@@ -448,7 +448,7 @@ impl UIElement for Interface {
         context: &CanvasRenderingContext2d,
         atlas: &HtmlCanvasElement,
         pointer: &Pointer,
-        frame: u64,
+        frame: usize,
     ) -> Result<(), JsValue> {
         for child in &self.children {
             child.draw(context, atlas, pointer, frame)?;

@@ -6,8 +6,7 @@ use rand_chacha::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::Message;
-use crate::{Game, Team};
+use crate::{Game, Message, Team};
 
 // #[cfg(feature = "server")]
 // use crate::Turn;
@@ -77,7 +76,7 @@ impl LobbySettings {
 }
 
 /// [`Lobby`] is a `struct` which contains all the information necessary for executing a game.
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Lobby {
     /// The active [`Game`] of this lobby.
     pub game: Game,
@@ -94,7 +93,7 @@ impl Lobby {
         // let mut rng = ChaCha8Rng::seed_from_u64(settings.seed);
 
         Lobby {
-            game: Game::default(),
+            game: Game::new(),
             players: HashMap::new(),
             player_slots: VecDeque::from([Player::new(Team::Red), Player::new(Team::Blue)]),
             ticks: 0,
@@ -106,6 +105,8 @@ impl Lobby {
     /// Used to synchronise lobby-related events.
     pub fn tick(&mut self) {
         self.ticks += 1;
+
+        self.game.tick();
     }
 
     /// Determines if all players slots are taken.
@@ -158,17 +159,7 @@ impl Lobby {
             Err(LobbyError("game not yet started".to_string()))
         } else {
             match self.players.get(&session_id) {
-                Some(player) => {
-                    if self.game.turn_for() == player.team {
-                        // if let Message::Move(Turn(from, to)) = message {
-                        //     self.game.take_move(from, to);
-                        // }
-
-                        Ok(())
-                    } else {
-                        Err(LobbyError("not your turn".to_string()))
-                    }
-                }
+                Some(player) => Ok(()),
                 None => Err(LobbyError("player not in lobby".to_string())),
             }
         }
@@ -215,23 +206,6 @@ impl Lobby {
     /// Returns `true` for [`LobbySort::LocalAI`].
     pub fn has_ai(&self) -> bool {
         matches!(self.settings.sort, LobbySort::LocalAI)
-    }
-
-    /// Determines if the given session ID is the one taking its turn.
-    pub fn is_active_player(&self, session_id: Option<&String>) -> bool {
-        if self.is_local() {
-            !(self.has_ai() && self.game.turn_for() == Team::Blue)
-        } else if !self.all_ready() {
-            false
-        } else {
-            match session_id {
-                Some(session_id) => match self.players.get(session_id) {
-                    Some(player) => self.game.turn_for() == player.team,
-                    None => false,
-                },
-                None => false,
-            }
-        }
     }
 
     /// Detemines whether or not the given session ID is in this lobby.

@@ -6,7 +6,7 @@ use crate::draw::draw_particle;
 #[derive(Clone, Default)]
 pub struct ParticleSystem {
     particles: Vec<Particle>,
-    last_tick_at: u64,
+    last_tick_at: usize,
 }
 
 impl ParticleSystem {
@@ -14,7 +14,7 @@ impl ParticleSystem {
         &mut self,
         context: &CanvasRenderingContext2d,
         atlas: &HtmlCanvasElement,
-        frame: u64,
+        frame: usize,
     ) -> Result<(), JsValue> {
         if self.last_tick_at != frame {
             self.last_tick_at = frame;
@@ -52,7 +52,7 @@ pub enum ParticleSort {
 pub struct Particle {
     pub position: (f64, f64),
     velocity: (f64, f64),
-    pub lifetime: u64,
+    pub lifetime: usize,
     pub sort: ParticleSort,
 }
 
@@ -60,7 +60,7 @@ impl Particle {
     pub fn new(
         position: (f64, f64),
         velocity: (f64, f64),
-        lifetime: u64,
+        lifetime: usize,
         sort: ParticleSort,
     ) -> Particle {
         Particle {

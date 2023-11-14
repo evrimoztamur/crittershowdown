@@ -2,13 +2,13 @@ use shared::{LobbySettings, LobbySort};
 use wasm_bindgen::JsValue;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
 
-use super::{Game, State};
+use super::{GameState, State};
 use crate::app::{
     Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme, LabelTrim,
     Pointer, StateSort, UIElement, UIEvent,
 };
 
-pub struct MainMenu {
+pub struct MainMenuState {
     interface: Interface,
     button_reset: ConfirmButtonElement,
 }
@@ -19,7 +19,7 @@ const BUTTON_TUTORIAL: usize = 22;
 const BUTTON_EDITOR: usize = 23;
 const BUTTON_RESET: usize = 50;
 
-impl State for MainMenu {
+impl State for MainMenuState {
     fn draw(
         &mut self,
         context: &CanvasRenderingContext2d,
@@ -58,7 +58,7 @@ impl State for MainMenu {
     }
 }
 
-impl Default for MainMenu {
+impl Default for MainMenuState {
     fn default() -> Self {
         let button_arena = ButtonElement::new(
             (192, 68),
@@ -112,7 +112,7 @@ impl Default for MainMenu {
             crate::app::ContentElement::Sprite((128, 16), (16, 16)),
         );
 
-        MainMenu {
+        MainMenuState {
             interface: root_element,
             button_reset,
         }

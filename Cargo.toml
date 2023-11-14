@@ -6,7 +6,7 @@ description = "Maginet is a multiplayer turn-based tactics game built in Rust an
 repository = "https://github.com/evrimoztamur/crittershowdown/"
 
 [workspace]
-members = ["server", "shared", "generate"]
+members = ["server", "shared"]
 
 [features]
 deploy = []

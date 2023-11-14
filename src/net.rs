@@ -14,11 +14,11 @@ const API_URL: &str = "https://tunnel.evrim.zone";
 
 pub struct MessagePool {
     pub messages: Vec<Message>,
-    block_frame: u64,
+    block_frame: usize,
 }
 
 impl MessagePool {
-    const BLOCK_FRAMES: u64 = 60;
+    const BLOCK_FRAMES: usize = 60;
 
     pub fn new() -> MessagePool {
         MessagePool {
@@ -27,11 +27,11 @@ impl MessagePool {
         }
     }
 
-    pub fn available(&self, frame: u64) -> bool {
+    pub fn available(&self, frame: usize) -> bool {
         frame >= self.block_frame
     }
 
-    pub fn block(&mut self, frame: u64) {
+    pub fn block(&mut self, frame: usize) {
         self.block_frame = frame + Self::BLOCK_FRAMES;
     }
 

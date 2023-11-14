@@ -6,7 +6,7 @@ use web_sys::{
     HtmlInputElement, KeyboardEvent, MouseEvent, TouchEvent,
 };
 
-use super::{AudioSystem, ClipId, Game, MainMenu, Pointer, BOARD_SCALE};
+use super::{AudioSystem, ClipId, GameState, MainMenuState, Pointer, BOARD_SCALE};
 use crate::{app::State, draw::draw_image, net::get_session_id, storage, window};
 
 /// Errors concerning the [`App`].
@@ -20,14 +20,14 @@ impl From<LobbyError> for AppError {
 }
 
 pub enum StateSort {
-    MainMenu(MainMenu),
-    Game(Game),
+    MainMenu(MainMenuState),
+    Game(GameState),
 }
 
 pub struct AppContext {
     pub session_id: Option<String>,
     pub pointer: Pointer,
-    pub frame: u64,
+    pub frame: usize,
     pub canvas_settings: CanvasSettings,
     pub text_input: Option<(String, String)>,
     pub audio_system: AudioSystem,
@@ -50,7 +50,7 @@ impl App {
                 text_input: None,
                 audio_system,
             },
-            state_sort: StateSort::Game(Game::new(LobbySettings::new(shared::LobbySort::Local))),
+            state_sort: StateSort::Game(GameState::new(LobbySettings::new(shared::LobbySort::Local))),
             atlas_complete: false,
         }
     }
@@ -130,7 +130,7 @@ impl App {
         context.restore();
         interface_context.restore();
 
-        self.app_context.frame = (window().performance().unwrap().now() * 0.06) as u64;
+        self.app_context.frame = (window().performance().unwrap().now() * 0.06) as usize;
         self.app_context.pointer.swap();
         self.app_context.text_input = None;
 
@@ -248,9 +248,9 @@ impl App {
         match &mut self.state_sort {
             StateSort::Game(state) => {
                 match event.code().as_str() {
-                    "KeyM" => {
-                        console::log_1(&format!("{:?}", state.lobby()).into());
-                    }
+                    // "KeyM" => {
+                    //     console::log_1(&format!("{:?}", state.lobby()).into());
+                    // }
                     _ => (),
                 };
             }
