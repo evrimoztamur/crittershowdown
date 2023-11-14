@@ -1,0 +1,79 @@
+{
+    "version": "2.0.0",
+    "presentation": {
+        "echo": false,
+        "reveal": "always",
+        "focus": false,
+        "panel": "dedicated",
+        "showReuseMessage": true
+    },
+    "tasks": [
+        {
+            "label": "local-web",
+            "dependsOn": [
+                "server",
+                "build",
+                "frpc"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "runOptions": {
+                "runOn": "folderOpen"
+            }
+        },
+        {
+            "label": "server",
+            "type": "shell",
+            "command": "",
+            "options": {
+                "shell": {
+                    "executable": "watchexec",
+                    "args": [
+                        "-w server/src -w shared -r -e rs -- cargo run -p server"
+                    ]
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "local-web"
+            }
+        },
+        {
+            "label": "build",
+            "type": "shell",
+            "command": "",
+            "options": {
+                "shell": {
+                    "executable": "watchexec",
+                    "args": [
+                        "-w src -w shared -r -e rs -- wasm-pack build --target web --release --out-name crittershowdown --out-dir static/js/pkg"
+                    ]
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "local-web"
+            }
+        },
+        {
+            "label": "frpc",
+            "type": "shell",
+            "command": "",
+            "options": {
+                "shell": {
+                    "executable": "frpc",
+                    "args": []
+                }
+            },
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": {
+                "group": "local-web"
+            }
+        }
+    ]
+}
