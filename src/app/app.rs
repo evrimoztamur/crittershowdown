@@ -7,7 +7,7 @@ use web_sys::{
 };
 
 use super::{AudioSystem, ClipId, Game, MainMenu, Pointer, BOARD_SCALE};
-use crate::{app::State, draw::draw_sprite, net::get_session_id, storage, window};
+use crate::{app::State, draw::draw_image, net::get_session_id, storage, window};
 
 /// Errors concerning the [`App`].
 #[derive(Debug, Serialize, Deserialize)]
@@ -116,11 +116,11 @@ impl App {
         }
 
         // DRAW cursor
-        draw_sprite(
+        draw_image(
             interface_context,
             atlas,
-            64.0,
-            8.0,
+            0.0,
+            208.0,
             16.0,
             16.0,
             self.app_context.pointer.location.0 as f64 - 5.0,

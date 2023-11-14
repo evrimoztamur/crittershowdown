@@ -8,7 +8,7 @@ use crate::{
     tuple_as,
 };
 
-pub fn draw_sprite(
+pub fn draw_image(
     context: &CanvasRenderingContext2d,
     atlas: &HtmlCanvasElement,
     sx: f64,
@@ -19,11 +19,70 @@ pub fn draw_sprite(
     dy: f64,
 ) -> Result<(), JsValue> {
     context.draw_image_with_html_canvas_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
-        atlas, sx, sy, sw, sh, dx.floor(), dy.floor(), sw, sh,
+        atlas,
+        sx,
+        sy,
+        sw,
+        sh,
+        dx.floor(),
+        dy.floor(),
+        sw,
+        sh,
     )?;
 
     Ok(())
 }
+
+pub fn draw_image_centered(
+    context: &CanvasRenderingContext2d,
+    atlas: &HtmlCanvasElement,
+    sx: f64,
+    sy: f64,
+    sw: f64,
+    sh: f64,
+    dx: f64,
+    dy: f64,
+) -> Result<(), JsValue> {
+    context.draw_image_with_html_canvas_element_and_sw_and_sh_and_dx_and_dy_and_dw_and_dh(
+        atlas,
+        sx,
+        sy,
+        sw,
+        sh,
+        (dx - sw / 2.0).floor(),
+        (dy - sh / 2.0).floor(),
+        sw,
+        sh,
+    )?;
+
+    Ok(())
+}
+
+// pub struct Sprite {
+//     sx: u16,
+//     sy: u16,
+//     sw: u16,
+//     sh: u16,
+//     dx: f64,
+//     dy: f64,
+// }
+
+// pub fn draw_sprite(
+//     context: &CanvasRenderingContext2d,
+//     atlas: &HtmlCanvasElement,
+//     sprite: &Sprite,
+// ) -> Result<(), JsValue> {
+//     draw_image(
+//         context,
+//         atlas,
+//         sprite.sx as f64,
+//         sprite.sy as f64,
+//         sprite.sw as f64,
+//         sprite.sh as f64,
+//         sprite.dx - sprite.sw as f64 * 0.5,
+//         sprite.dy - sprite.sh as f64 * 0.5,
+//     )
+// }
 
 fn kerning(char: char) -> (isize, isize) {
     match char {
@@ -63,7 +122,7 @@ pub fn draw_text(
         let kern = kerning(char);
         kerning_acc += kern.0;
 
-        draw_sprite(
+        draw_image(
             context,
             atlas,
             ((char as u8 % 32) * 8) as f64,
@@ -117,7 +176,7 @@ pub fn draw_particle(
 
     context.rotate((spin / 5) as f64 * std::f64::consts::PI / 2.0)?;
     // context.rotate(frame as f64 * 0.1)?;
-    draw_sprite(
+    draw_image(
         context,
         atlas,
         {
@@ -194,7 +253,7 @@ pub fn draw_label(
         LabelTrim::Return => (96.0, 0.0),
     };
 
-    draw_sprite(
+    draw_image(
         context,
         atlas,
         trim_position.0,
@@ -204,7 +263,7 @@ pub fn draw_label(
         -size.0 as f64 / 2.0,
         -size.1 as f64 / 2.0,
     )?;
-    draw_sprite(
+    draw_image(
         context,
         atlas,
         trim_position.0 + 4.0,
@@ -214,7 +273,7 @@ pub fn draw_label(
         size.0 as f64 / 2.0 - 4.0,
         -size.1 as f64 / 2.0,
     )?;
-    draw_sprite(
+    draw_image(
         context,
         atlas,
         trim_position.0,
@@ -224,7 +283,7 @@ pub fn draw_label(
         -size.0 as f64 / 2.0,
         size.1 as f64 / 2.0 - 4.0,
     )?;
-    draw_sprite(
+    draw_image(
         context,
         atlas,
         trim_position.0 + 4.0,

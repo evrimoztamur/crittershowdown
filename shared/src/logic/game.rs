@@ -1,10 +1,12 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{Team, Result};
+use crate::{Result, Team, Bug};
 
 /// Game structure.
-#[derive(PartialEq, Eq, Hash, Debug, Serialize, Deserialize, Copy, Clone, Default)]
-pub struct Game {}
+#[derive(PartialEq, Eq, Hash, Debug, Serialize, Deserialize, Clone, Default)]
+pub struct Game {
+    bugs: Vec<Bug>,
+}
 
 impl Game {
     /// Returns the [`Team`] that is to take their turn.

@@ -2,7 +2,7 @@ use wasm_bindgen::JsValue;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
 use super::{Pointer, ClipId};
-use crate::draw::{draw_label, draw_sprite, draw_text_centered};
+use crate::draw::{draw_label, draw_image, draw_text_centered};
 
 pub enum UIEvent {
     ButtonClick(usize, Option<ClipId>),
@@ -54,7 +54,7 @@ impl UIElement for ContentElement {
 
         match self {
             ContentElement::Text(text, _) => draw_text_centered(context, atlas, 0.0, 0.0, text),
-            ContentElement::Sprite(position, size) => draw_sprite(
+            ContentElement::Sprite(position, size) => draw_image(
                 context,
                 atlas,
                 position.0 as f64,

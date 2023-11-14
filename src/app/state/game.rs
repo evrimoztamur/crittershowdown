@@ -1,5 +1,7 @@
 use std::{cell::RefCell, rc::Rc};
 
+use js_sys::Math;
+use rapier2d::prelude::{point, vector};
 use shared::{Lobby, LobbySettings, Message, Physics};
 use wasm_bindgen::{prelude::Closure, JsValue};
 use web_sys::{console, CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
@@ -10,8 +12,9 @@ use crate::{
         Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme,
         LabelTrim, ParticleSystem, StateSort, ToggleButtonElement, UIElement,
     },
-    draw::draw_sprite,
+    draw::{draw_image, draw_image_centered},
     net::{create_new_lobby, MessagePool},
+    window,
 };
 
 const BUTTON_REMATCH: usize = 1;
@@ -142,16 +145,37 @@ impl State for Game {
 
         // }
 
-        for ball_position in self.physics.ball_positions() {
-            draw_sprite(
+        let point = point![
+            (pointer.location.0 - 128) as f32 / 16.0,
+            (pointer.location.1 - 128) as f32 / 16.0
+        ];
+
+        if let Some((collider_position, point_projection)) =
+            self.physics.intersecting_collider(point)
+        {
+            draw_image_centered(
                 context,
                 atlas,
+                0.0,
+                176.0,
                 32.0,
-                320.0,
                 32.0,
-                32.0,
-                ball_position.x as f64 - 16.0,
-                ball_position.y as f64 - 16.0,
+                collider_position.x as f64 * 16.0 + 128.0,
+                collider_position.y as f64 * 16.0 + 128.0,
+            )?;
+        }
+
+        for (i, ball_position) in self.physics.ball_positions().iter().enumerate() {
+            let i = i as u64;
+            draw_image_centered(
+                context,
+                atlas,
+                16.0 * ((i % 2) as f64),
+                16.0 * (((frame / (6 + (i % 3)) + (i % 3)) % 2) as f64),
+                16.0,
+                16.0,
+                ball_position.x as f64,
+                ball_position.y as f64,
             )?;
         }
 
@@ -167,6 +191,17 @@ impl State for Game {
         let pointer = &app_context.pointer;
 
         let message_pool = self.message_pool.clone();
+
+        let random = (Math::random() * self.physics.collider_set.len() as f64).floor() as usize;
+
+        for (i, (_, rb)) in self.physics.rigid_body_set.iter_mut().enumerate() {
+            if i == random {
+                rb.apply_impulse(
+                    (vector![Math::random() as f32 - 0.5, Math::random() as f32 - 0.5]).scale(2.0),
+                    true,
+                );
+            }
+        }
 
         self.physics.tick();
 

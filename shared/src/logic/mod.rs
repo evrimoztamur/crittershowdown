@@ -1,7 +1,9 @@
+mod bug;
 mod game;
-mod team;
 mod physics;
+mod team;
 
+pub use bug::*;
 pub use game::*;
-pub use team::*;
 pub use physics::*;
+pub use team::*;
