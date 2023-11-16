@@ -3,6 +3,7 @@ use std::{
     fs::{self, File},
     net::SocketAddr,
     sync::{Arc, Mutex},
+    time::Instant,
 };
 
 use axum::{
@@ -31,12 +32,13 @@ async fn main() {
         .nest_service("/static", ServeDir::new("static"))
         .route_service("/", ServeFile::new("html/game.html"))
         .route_service("/about", ServeFile::new("html/index.html"))
-        .route("/lobby/create", post(create_lobby))
-        .route("/lobby/:id/turns/:since", get(get_turns_since))
-        .route("/lobby/:id/act", post(process_inbound))
-        .route("/lobby/:id/ready", post(post_ready))
-        .route("/lobby/:id/rematch", post(post_rematch))
-        .route("/lobby/:id/state", get(get_state))
+        .route("/lobbies/create", post(create_lobby))
+        .route("/lobbies/", get(get_lobbies))
+        .route("/lobbies/:id/turns/:since", get(get_turns_since))
+        .route("/lobbies/:id/act", post(process_inbound))
+        .route("/lobbies/:id/ready", post(post_ready))
+        // .route("/lobbies/:id/rematch", post(post_rematch))
+        .route("/lobbies/:id/state", get(get_state))
         .route("/session", get(obtain_session))
         .with_state(state);
 
@@ -58,11 +60,22 @@ async fn create_lobby(
     session_message
         .lobby_settings
         .set_sort(LobbySort::Online(lobby_id));
-    let lobby = Lobby::new(session_message.lobby_settings);
+
+    let mut lobby = Lobby::new(session_message.lobby_settings, timestamp());
+
+    lobby.join_player(session_message.session_id, timestamp()).unwrap();
 
     lobbies.insert(lobby_id, lobby.clone());
 
     Json(Message::Lobby(Box::new(lobby)))
+}
+
+async fn get_lobbies(State(state): State<AppState>) -> Json<Message> {
+    let mut lobbies = state.lobbies.lock().unwrap();
+
+    lobbies.retain(|k, v| v.any_connected(timestamp()));
+
+    Json(Message::Lobbies(lobbies.clone()))
 }
 
 async fn get_turns_since(
@@ -77,7 +90,7 @@ async fn get_turns_since(
         //         lobby.game.turns_since(since).into_iter().cloned().collect();
         //     Json(Message::Moves(turns_since))
         // } else {
-            Json(Message::Lobby(Box::new(lobby.clone())))
+        Json(Message::Lobby(Box::new(lobby.clone())))
         // }
     } else {
         Json(Message::LobbyError(LobbyError(
@@ -124,31 +137,33 @@ async fn post_ready(
     let mut lobbies = state.lobbies.lock().unwrap();
 
     Json(match lobbies.get_mut(&id) {
-        Some(lobby) => lobby.join_player(session_request.session_id).into(),
+        Some(lobby) => lobby
+            .join_player(session_request.session_id, timestamp())
+            .into(),
         None => Message::LobbyError(LobbyError("lobby does not exist".to_string())),
     })
 }
 
-async fn post_rematch(
-    State(state): State<AppState>,
-    Path(id): Path<u16>,
-    Json(session_request): Json<SessionRequest>,
-) -> Json<Message> {
-    let mut lobbies = state.lobbies.lock().unwrap();
+// async fn post_rematch(
+//     State(state): State<AppState>,
+//     Path(id): Path<u16>,
+//     Json(session_request): Json<SessionRequest>,
+// ) -> Json<Message> {
+//     let mut lobbies = state.lobbies.lock().unwrap();
 
-    Json(match lobbies.get_mut(&id) {
-        Some(lobby) => {
-            let result = lobby.request_rematch(session_request.session_id);
+//     Json(match lobbies.get_mut(&id) {
+//         Some(lobby) => {
+//             let result = lobby.request_rematch(session_request.session_id);
 
-            if let Ok(true) = result {
-                lobby.remake();
-            }
+//             if let Ok(true) = result {
+//                 lobby.remake();
+//             }
 
-            result.into()
-        }
-        None => Message::LobbyError(LobbyError("lobby does not exist".to_string())),
-    })
-}
+//             result.into()
+//         }
+//         None => Message::LobbyError(LobbyError("lobby does not exist".to_string())),
+//     })
+// }
 
 async fn obtain_session() -> Json<SessionRequest> {
     Json(SessionRequest {
@@ -178,4 +193,14 @@ fn generate_lobby_id() -> u16 {
             return res;
         }
     }
+}
+use std::time::{SystemTime, UNIX_EPOCH};
+
+fn timestamp() -> f64 {
+    let start = SystemTime::now();
+    let since_the_epoch = start
+        .duration_since(UNIX_EPOCH)
+        .expect("time went backwards");
+
+    since_the_epoch.as_secs_f64()
 }

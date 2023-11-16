@@ -1,4 +1,7 @@
-use std::collections::{BTreeMap, HashMap, VecDeque};
+use std::{
+    collections::{BTreeMap, HashMap, VecDeque},
+    time::Instant,
+};
 
 use rand_chacha::{
     rand_core::{RngCore, SeedableRng},
@@ -35,13 +38,16 @@ pub struct Player {
     pub team: Team,
     /// Whether the player wants to rematch or not.
     pub rematch: bool,
+    /// Last heartbeat.
+    pub last_heartbeat: f64,
 }
 
 impl Player {
-    fn new(team: Team) -> Player {
+    fn new(team: Team, heartbeat: f64) -> Player {
         Player {
             team,
             rematch: false,
+            last_heartbeat: heartbeat,
         }
     }
 }
@@ -79,34 +85,31 @@ impl LobbySettings {
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Lobby {
     /// The active [`Game`] of this lobby.
+    #[serde(skip)]
     pub game: Game,
     players: HashMap<String, Player>,
     player_slots: VecDeque<Player>,
-    ticks: usize,
+    /// Last heartbeat.
+    pub first_heartbeat: f64,
     /// The [`Lobby`]s sort.
     pub settings: LobbySettings,
 }
 
 impl Lobby {
     /// Instantiates the [`Lobby`] `struct` with a given [`LobbySort`].
-    pub fn new(settings: LobbySettings) -> Lobby {
+    pub fn new(settings: LobbySettings, first_heartbeat: f64) -> Lobby {
         // let mut rng = ChaCha8Rng::seed_from_u64(settings.seed);
 
         Lobby {
-            game: Game::new(),
+            game: Game::default(),
             players: HashMap::new(),
-            player_slots: VecDeque::from([Player::new(Team::Red), Player::new(Team::Blue)]),
-            ticks: 0,
+            player_slots: VecDeque::from([
+                Player::new(Team::Red, 0.0),
+                Player::new(Team::Blue, 0.0),
+            ]),
+            first_heartbeat,
             settings,
         }
-    }
-
-    /// Number of ticks since the lobby's creation.
-    /// Used to synchronise lobby-related events.
-    pub fn tick(&mut self) {
-        self.ticks += 1;
-
-        self.game.tick();
     }
 
     /// Determines if all players slots are taken.
@@ -116,15 +119,15 @@ impl Lobby {
 
     #[cfg(feature = "server")]
     /// Includes a new session ID into the lobby, and assigns a player index to it.
-    pub fn join_player(&mut self, session_id: String) -> Result<(), LobbyError> {
+    pub fn join_player(&mut self, session_id: String, timestamp: f64) -> Result<(), LobbyError> {
         if self.all_ready() {
             Err(LobbyError("cannot join an active game".to_string()))
         } else if self.players.contains_key(&session_id) {
             Err(LobbyError("already in lobby".to_string()))
-        } else if let Some(player) = self.player_slots.pop_front() {
-            self.players.insert(session_id.clone(), player);
+        } else if let Some(mut player) = self.player_slots.pop_front() {
+            player.last_heartbeat = timestamp;
 
-            self.tick();
+            self.players.insert(session_id.clone(), player);
 
             Ok(())
         } else {
@@ -155,11 +158,28 @@ impl Lobby {
     #[cfg(feature = "server")]
     /// Executes a certain [`Message`] for the player.
     pub fn act_player(&mut self, session_id: String, message: Message) -> Result<(), LobbyError> {
+        use std::time::{SystemTime, UNIX_EPOCH};
+
+        fn timestamp() -> f64 {
+            let start = SystemTime::now();
+            let since_the_epoch = start
+                .duration_since(UNIX_EPOCH)
+                .expect("time went backwards");
+        
+            since_the_epoch.as_secs_f64()
+        }
+
         if !self.all_ready() {
             Err(LobbyError("game not yet started".to_string()))
         } else {
-            match self.players.get(&session_id) {
-                Some(player) => Ok(()),
+            match self.players.get_mut(&session_id) {
+                Some(player) => {
+                    self.game.act_player(player, message);
+
+                    player.last_heartbeat = timestamp();
+
+                    Ok(())
+                }
                 None => Err(LobbyError("player not in lobby".to_string())),
             }
         }
@@ -188,10 +208,10 @@ impl Lobby {
         // }
     }
 
-    /// Makes a fully-reset clone of this [`Lobby`].
-    pub fn remake(&mut self) {
-        *self = Lobby::new(self.settings.clone());
-    }
+    // /// Makes a fully-reset clone of this [`Lobby`].
+    // pub fn remake(&mut self) {
+    //     *self = Lobby::new(self.settings.clone());
+    // }
 
     /// Determines if the game is finished.
     pub fn finished(&self) -> bool {
@@ -219,6 +239,13 @@ impl Lobby {
     /// Returns the players.
     pub fn players(&self) -> &HashMap<String, Player> {
         &self.players
+    }
+
+    /// Checks if any players are connected to this lobby
+    pub fn any_connected(&self, timestamp: f64) -> bool {
+        self.players
+            .iter()
+            .any(|(_, player)| timestamp - player.last_heartbeat < 15.0)
     }
 }
 

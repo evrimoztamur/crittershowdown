@@ -1,23 +1,38 @@
-use shared::{LobbySettings, LobbySort};
-use wasm_bindgen::JsValue;
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
+
+use shared::{Lobby, LobbySettings, LobbySort, Message};
+use wasm_bindgen::{closure::Closure, JsValue};
+use web_sys::{console, CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
 
 use super::{GameState, State};
-use crate::app::{
-    Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme, LabelTrim,
-    Pointer, StateSort, UIElement, UIEvent,
+use crate::{
+    app::{
+        Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme,
+        LabelTrim, Pointer, StateSort, UIElement, UIEvent,
+    },
+    draw::{draw_bug, draw_bugdata, draw_label, draw_text, draw_text_centered},
+    net::{create_new_lobby, fetch, request_lobbies, send_ready, MessagePool},
 };
 
 pub struct MainMenuState {
     interface: Interface,
-    button_reset: ConfirmButtonElement,
+    lobby_list_interface: Interface,
+    last_lobby_refresh: usize,
+    message_pool: Rc<RefCell<MessagePool>>,
+    message_closure: Closure<dyn FnMut(JsValue)>,
+    lobbies: HashMap<u16, Lobby>,
+    displayed_lobbies: Vec<(usize, (u16, Lobby))>,
+    lobby_page: usize,
+    lobby_list_dirty: bool,
 }
 
+impl MainMenuState {}
+
+const BUTTON_PAGE_PREVIOUS: usize = 10;
+const BUTTON_PAGE_NEXT: usize = 11;
 const BUTTON_ARENA: usize = 20;
-const BUTTON_SKIRMISH: usize = 21;
-const BUTTON_TUTORIAL: usize = 22;
-const BUTTON_EDITOR: usize = 23;
-const BUTTON_RESET: usize = 50;
+
+const LOBBY_PAGE_SIZE: usize = 4;
 
 impl State for MainMenuState {
     fn draw(
@@ -38,6 +53,95 @@ impl State for MainMenuState {
 
         self.interface
             .draw(interface_context, atlas, pointer, frame)?;
+        self.lobby_list_interface
+            .draw(interface_context, atlas, pointer, frame)?;
+
+        draw_text_centered(
+            context,
+            atlas,
+            (384.0) / 2.0,
+            256.0 - 20.0,
+            format!("{}", self.lobby_page + 1).as_str(),
+        )?;
+
+        let a: Vec<f64> = self
+            .displayed_lobbies
+            .iter()
+            .map(|(_, (_, lobby))| lobby.first_heartbeat)
+            .collect();
+        console::log_1(&format!("{:?}", a).into());
+
+        for (i, (lobby_id, lobby)) in &self.displayed_lobbies {
+            let ir: usize = i - self.lobby_page * LOBBY_PAGE_SIZE;
+            let pointer = pointer.teleport((-(384 - 256) / 2, -(12 + ir as i32 * 48)));
+            context.save();
+            context.translate((384.0 - 256.0) / 2.0, 12.0 + ir as f64 * 48.0)?;
+            draw_label(
+                context,
+                atlas,
+                (0, 15),
+                (224, 24),
+                "#2a1f00",
+                &crate::app::ContentElement::None,
+                &pointer,
+                frame,
+                &LabelTrim::Round,
+                false,
+            )?;
+
+            if pointer.in_region((-8, 0), (72, 16)) {
+                draw_label(
+                    context,
+                    atlas,
+                    (-8, 0),
+                    (72, 16),
+                    "#2a9f55",
+                    &crate::app::ContentElement::Text(format!("{}", lobby_id), Alignment::Center),
+                    &pointer,
+                    frame,
+                    &LabelTrim::Glorious,
+                    false,
+                )?;
+            } else {
+                draw_label(
+                    context,
+                    atlas,
+                    (-8, 0),
+                    (72, 16),
+                    "#2a9f55",
+                    &crate::app::ContentElement::Text(
+                        format!("Lobby {}", i + 1),
+                        Alignment::Start(72),
+                    ),
+                    &pointer,
+                    frame,
+                    &LabelTrim::Glorious,
+                    false,
+                )?;
+            }
+
+            draw_text(context, atlas, 72.0, 4.0, "King of the Hill")?;
+
+            context.save();
+            if (i) % 2 == 1 {
+                context.translate(12.0, 36.0)?;
+            } else {
+                context.translate(12.0, 32.0)?;
+            }
+            for (j, bug) in lobby.game.iter_bugdata().enumerate() {
+                if (j + i) % 2 == 0 {
+                    context.translate(0.0, 4.0)?;
+                } else {
+                    context.translate(0.0, -4.0)?;
+                }
+
+                draw_bugdata(context, atlas, bug, i * j + j, frame)?;
+                context.translate(12.0, 0.0)?;
+            }
+
+            context.restore();
+            context.restore();
+        }
 
         Ok(())
     }
@@ -52,6 +156,97 @@ impl State for MainMenuState {
 
         if let Some(UIEvent::ButtonClick(value, clip_id)) = self.interface.tick(pointer) {
             app_context.audio_system.play_clip_option(clip_id);
+
+            if let BUTTON_ARENA = value {
+                if let Some(session_id) = &app_context.session_id {
+                    return Some(StateSort::Game(GameState::new(
+                        LobbySettings::new(LobbySort::Online(0)),
+                        session_id.clone(),
+                    )));
+                }
+            } else if let BUTTON_PAGE_PREVIOUS = value {
+                self.lobby_page = self.lobby_page.saturating_sub(1);
+                self.lobby_list_dirty = true;
+            } else if let BUTTON_PAGE_NEXT = value {
+                self.lobby_page = self.lobby_page.saturating_add(1);
+                self.lobby_list_dirty = true;
+            }
+        }
+
+        if let Some(UIEvent::ButtonClick(value, clip_id)) = self.lobby_list_interface.tick(pointer)
+        {
+            if let Some(session_id) = &app_context.session_id {
+                app_context.audio_system.play_clip_option(clip_id);
+
+                console::log_1(&format!("{}", value).into());
+                return Some(StateSort::Game(GameState::new(
+                    LobbySettings::new(LobbySort::Online(value as u16)),
+                    session_id.clone(),
+                )));
+            }
+        }
+
+        self.lobby_page = self
+            .lobby_page
+            .min(self.lobbies.len().saturating_sub(1) / LOBBY_PAGE_SIZE);
+
+        if (frame - self.last_lobby_refresh) > 60 {
+            self.last_lobby_refresh = frame;
+            let _ = fetch(&request_lobbies()).then(&self.message_closure);
+        }
+
+        let mut message_pool = self.message_pool.borrow_mut();
+
+        for message in &message_pool.messages {
+            match message {
+                Message::Ok => (),
+                Message::Lobby(lobby) => {
+                    // self.lobbies.insert(0, *lobby.clone());
+                }
+                Message::Lobbies(lobbies) => {
+                    self.lobbies = lobbies.clone();
+                    self.lobby_list_dirty = true;
+                }
+                Message::LobbyError(_) => (),
+                Message::Move(_) => (),
+                Message::Moves(_) => (),
+            }
+        }
+
+        message_pool.clear();
+
+        if self.lobby_list_dirty {
+            self.lobby_list_dirty = false;
+
+            let mut displayed_lobbies: Vec<(u16, Lobby)> =
+                self.lobbies.clone().into_iter().collect();
+
+            displayed_lobbies.sort_by(|a, b| a.1.first_heartbeat.total_cmp(&b.1.first_heartbeat));
+
+            self.displayed_lobbies = displayed_lobbies
+                .into_iter()
+                .enumerate()
+                .skip(self.lobby_page * LOBBY_PAGE_SIZE)
+                .take(LOBBY_PAGE_SIZE)
+                .collect();
+
+            self.lobby_list_interface = Interface::new(
+                self.displayed_lobbies
+                    .iter()
+                    .map(|(i, (key, lobby))| {
+                        console::log_1(&format!("INTERP {}", key).into());
+                        ButtonElement::new(
+                            (384 - 88, 27 + *i as i32 * 48),
+                            (24, 24),
+                            *key as usize,
+                            LabelTrim::Return,
+                            LabelTheme::Action,
+                            crate::app::ContentElement::Sprite((32, 192), (16, 16)),
+                        )
+                        .boxed()
+                    })
+                    .collect(),
+            );
         }
 
         None
@@ -60,61 +255,73 @@ impl State for MainMenuState {
 
 impl Default for MainMenuState {
     fn default() -> Self {
-        let button_arena = ButtonElement::new(
-            (192, 68),
+        let button_new_lobby = ButtonElement::new(
+            (8, 256 - 32),
             (112, 24),
             BUTTON_ARENA,
             LabelTrim::Glorious,
             LabelTheme::Action,
-            crate::app::ContentElement::Text("Campaign".to_string(), Alignment::Center),
+            crate::app::ContentElement::Text("New Lobby".to_string(), Alignment::Center),
         );
 
-        let button_skirmish = ButtonElement::new(
-            (200, 68 + 32),
-            (96, 20),
-            BUTTON_SKIRMISH,
+        let button_join_private: ButtonElement = ButtonElement::new(
+            (384 - 120, 256 - 32),
+            (112, 24),
+            BUTTON_ARENA,
             LabelTrim::Glorious,
             LabelTheme::Default,
-            crate::app::ContentElement::Text("Skirmish".to_string(), Alignment::Center),
+            crate::app::ContentElement::Text("Join Private".to_string(), Alignment::Center),
         );
 
-        let button_editor = ButtonElement::new(
-            (208, 68 + 32 * 2 + 4),
-            (80, 20),
-            BUTTON_EDITOR,
+        let button_page_previous: ButtonElement = ButtonElement::new(
+            ((384 - 64) / 2, 256 - 28),
+            (20, 16),
+            BUTTON_PAGE_PREVIOUS,
             LabelTrim::Round,
             LabelTheme::Default,
-            crate::app::ContentElement::Text("Editor".to_string(), Alignment::Center),
+            crate::app::ContentElement::Sprite((48, 176), (8, 8)),
         );
 
-        let button_tutorial = ButtonElement::new(
-            (208, 68 + 32 * 3),
-            (80, 20),
-            BUTTON_TUTORIAL,
+        let button_page_next: ButtonElement = ButtonElement::new(
+            ((384 - 64) / 2 + 44, 256 - 28),
+            (20, 16),
+            BUTTON_PAGE_NEXT,
             LabelTrim::Round,
             LabelTheme::Default,
-            crate::app::ContentElement::Text("Tutorial".to_string(), Alignment::Center),
+            crate::app::ContentElement::Sprite((56, 176), (8, 8)),
         );
 
-        let root_element = Interface::new(vec![
-            button_arena.boxed(),
-            button_editor.boxed(),
-            button_tutorial.boxed(),
-            button_skirmish.boxed(),
+        let interface = Interface::new(vec![
+            button_new_lobby.boxed(),
+            button_join_private.boxed(),
+            button_page_previous.boxed(),
+            button_page_next.boxed(),
         ]);
 
-        let button_reset = ConfirmButtonElement::new(
-            (208 - 164, 64 + 166),
-            (24, 20),
-            BUTTON_RESET,
-            LabelTrim::Round,
-            LabelTheme::Default,
-            crate::app::ContentElement::Sprite((128, 16), (16, 16)),
-        );
+        let message_pool = Rc::new(RefCell::new(MessagePool::new()));
+
+        let message_closure = {
+            let message_pool = message_pool.clone();
+
+            Closure::<dyn FnMut(JsValue)>::new(move |value| {
+                let mut message_pool = message_pool.borrow_mut();
+                let message: Message = serde_wasm_bindgen::from_value(value).unwrap();
+                message_pool.push(message);
+            })
+        };
+
+        let lobbies = HashMap::new();
 
         MainMenuState {
-            interface: root_element,
-            button_reset,
+            interface,
+            lobby_list_interface: Interface::new(Vec::default()),
+            last_lobby_refresh: 0,
+            lobby_page: 0,
+            lobby_list_dirty: false,
+            displayed_lobbies: Vec::new(),
+            message_closure,
+            message_pool,
+            lobbies,
         }
     }
 }

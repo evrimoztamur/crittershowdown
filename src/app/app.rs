@@ -50,7 +50,8 @@ impl App {
                 text_input: None,
                 audio_system,
             },
-            state_sort: StateSort::Game(GameState::new(LobbySettings::new(shared::LobbySort::Local))),
+            // state_sort: StateSort::Game(GameState::new(LobbySettings::new(shared::LobbySort::Local))),
+            state_sort: StateSort::MainMenu(MainMenuState::default()),
             atlas_complete: false,
         }
     }

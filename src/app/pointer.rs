@@ -64,4 +64,11 @@ impl Pointer {
             (real.0 - padding.0, real.1 - padding.1)
         }
     }
+
+    pub fn in_region(&self, position: (i32, i32), size: (i32, i32)) -> bool {
+        self.location.0 >= position.0
+            && self.location.0 < position.0 + size.0
+            && self.location.1 >= position.1
+            && self.location.1 < position.1 + size.1
+    }
 }

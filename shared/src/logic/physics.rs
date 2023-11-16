@@ -28,45 +28,16 @@ pub struct Physics {
 }
 
 impl Physics {
-    /// TODO docs
-    pub fn from_settings() -> Physics {
-        let mut physics = Physics::default();
-
-        /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(8.0, 0.1)
-            .translation(vector![0.0, -8.0])
-            .build();
-        physics.collider_set.insert(collider);
-
-        /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(8.0, 0.1)
-            .translation(vector![0.0, 8.0])
-            .build();
-        physics.collider_set.insert(collider);
-
-        /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(0.1, 8.0)
-            .translation(vector![8.0, 0.0])
-            .build();
-        physics.collider_set.insert(collider);
-
-        /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(0.1, 8.0)
-            .translation(vector![-8.0, 0.0])
-            .build();
-        physics.collider_set.insert(collider);
-
-        physics
-    }
-
     /// Inserts a new [`RigidBody`] for a [`Bug`].
-    pub fn insert_bug(&mut self, translation: Vector2<f32>) -> RigidBodyHandle {
+    pub fn insert_bug(&mut self, translation: Vector2<f32>, index: usize) -> RigidBodyHandle {
         let rigid_body = RigidBodyBuilder::dynamic()
+            .ccd_enabled(true)
             .translation(translation)
-            .linear_damping(0.9995)
+            .linear_damping(1.5)
+            .user_data(index as u128)
             .build();
 
-        let collider = ColliderBuilder::ball(0.5).restitution(1.0).build();
+        let collider = ColliderBuilder::ball(0.5).restitution(0.4).build();
         let ball_body_handle = self.rigid_body_set.insert(rigid_body);
 
         self.collider_set
@@ -156,7 +127,7 @@ impl Default for Physics {
         let ccd_solver = CCDSolver::new();
         let query_pipeline = QueryPipeline::new();
 
-        Physics {
+        let mut physics = Physics {
             physics_pipeline,
             gravity,
             integration_parameters,
@@ -169,6 +140,32 @@ impl Default for Physics {
             rigid_body_set,
             collider_set,
             query_pipeline,
-        }
+        };
+
+        /* Create the ground. */
+        let collider = ColliderBuilder::cuboid(5.0, 0.1)
+            .translation(vector![0.0, -5.0])
+            .build();
+        physics.collider_set.insert(collider);
+
+        /* Create the ground. */
+        let collider = ColliderBuilder::cuboid(5.0, 0.1)
+            .translation(vector![0.0, 5.0])
+            .build();
+        physics.collider_set.insert(collider);
+
+        /* Create the ground. */
+        let collider = ColliderBuilder::cuboid(0.1, 5.0)
+            .translation(vector![5.0, 0.0])
+            .build();
+        physics.collider_set.insert(collider);
+
+        /* Create the ground. */
+        let collider = ColliderBuilder::cuboid(0.1, 5.0)
+            .translation(vector![-5.0, 0.0])
+            .build();
+        physics.collider_set.insert(collider);
+
+        physics
     }
 }

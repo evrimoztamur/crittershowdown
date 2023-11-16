@@ -1,8 +1,8 @@
 use wasm_bindgen::JsValue;
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
 
-use super::{Pointer, ClipId};
-use crate::draw::{draw_label, draw_image, draw_text_centered};
+use super::{ClipId, Pointer};
+use crate::draw::{draw_image, draw_label, draw_text, draw_text_centered};
 
 pub enum UIEvent {
     ButtonClick(usize, Option<ClipId>),
@@ -26,7 +26,7 @@ pub trait UIElement {
 
 #[derive(Clone)]
 pub enum Alignment {
-    // Start,
+    Start(i32),
     Center,
     // End,
 }
@@ -36,6 +36,7 @@ pub enum ContentElement {
     Text(String, Alignment),
     Sprite((i32, i32), (i32, i32)),
     // List(Vec<ContentElement>),
+    None,
 }
 
 impl UIElement for ContentElement {
@@ -53,7 +54,12 @@ impl UIElement for ContentElement {
         context.save();
 
         match self {
-            ContentElement::Text(text, _) => draw_text_centered(context, atlas, 0.0, 0.0, text),
+            ContentElement::Text(text, alignment) => match alignment {
+                Alignment::Center => draw_text_centered(context, atlas, 0.0, 0.0, text),
+                Alignment::Start(width) => {
+                    draw_text(context, atlas, -width as f64 / 2.0 + 8.0, -4.0, text)
+                }
+            },
             ContentElement::Sprite(position, size) => draw_image(
                 context,
                 atlas,
@@ -64,6 +70,7 @@ impl UIElement for ContentElement {
                 -size.0 as f64 / 2.0,
                 -size.1 as f64 / 2.0,
             ),
+            ContentElement::None => Ok(())
         }?;
 
         context.restore();
@@ -119,12 +126,7 @@ impl ButtonElement {
     }
 
     fn hovered(&self, pointer: &Pointer) -> bool {
-        let pointer_location = pointer.location;
-
-        pointer_location.0 >= self.position.0
-            && pointer_location.0 < self.position.0 + self.size.0
-            && pointer_location.1 >= self.position.1
-            && pointer_location.1 < self.position.1 + self.size.1
+        pointer.in_region(self.position, self.size)
     }
 
     fn clicked(&self, pointer: &Pointer) -> bool {
@@ -157,9 +159,9 @@ impl UIElement for ButtonElement {
                 if self.selected {
                     &"#007faa"
                 } else if self.hovered(pointer) {
-                    &"#008080"
+                    &"#2a7faa"
                 } else {
-                    &"#006080"
+                    &"#008080"
                 }
             }
             LabelTheme::Action => {
@@ -278,7 +280,10 @@ impl UIElement for ConfirmButtonElement {
         if pointer.clicked() {
             if self.button.clicked(pointer) {
                 if self.button.selected {
-                    Some(UIEvent::ButtonClick(self.button.value, self.button.clip_id()))
+                    Some(UIEvent::ButtonClick(
+                        self.button.value,
+                        self.button.clip_id(),
+                    ))
                 } else {
                     self.button.selected = true;
                     None
@@ -344,7 +349,10 @@ impl UIElement for ToggleButtonElement {
         if self.button.clicked(pointer) {
             self.toggle();
 
-            Some(UIEvent::ButtonClick(self.button.value, self.button.clip_id()))
+            Some(UIEvent::ButtonClick(
+                self.button.value,
+                self.button.clip_id(),
+            ))
         } else {
             None
         }

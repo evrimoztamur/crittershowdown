@@ -1,3 +1,5 @@
+#![feature(iter_collect_into)]
+
 mod app;
 mod draw;
 mod net;
@@ -78,7 +80,7 @@ async fn start() -> Result<(), JsValue> {
     let canvas_settings = CanvasSettings::new(
         384 + 16,
         256 + 16,
-        256,
+        384,
         256,
         2.0 * device_pixel_ratio,
         window().inner_width().unwrap().as_f64().unwrap()

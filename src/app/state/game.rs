@@ -1,8 +1,9 @@
-use std::{cell::RefCell, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use js_sys::Math;
-use rapier2d::prelude::{point, vector};
-use shared::{Bug, Game, Lobby, LobbySettings, Message, Physics};
+use nalgebra::vector;
+use rapier2d::{dynamics::RigidBodyHandle, prelude::point};
+use shared::{BugData, Lobby, LobbySettings, LobbySort, Message, Turn};
 use wasm_bindgen::{prelude::Closure, JsValue};
 use web_sys::{console, CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
 
@@ -12,8 +13,10 @@ use crate::{
         Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme,
         LabelTrim, ParticleSystem, StateSort, ToggleButtonElement, UIElement,
     },
-    draw::{draw_bug, draw_image, draw_image_centered, local_to_screen},
-    net::{create_new_lobby, MessagePool},
+    draw::{
+        draw_bug, draw_bug_impulse, draw_image, draw_image_centered, draw_text, local_to_screen,
+    },
+    net::{create_new_lobby, send_message, send_ready, MessagePool, request_turns_since},
     window,
 };
 
@@ -29,10 +32,11 @@ pub struct GameState {
     message_pool: Rc<RefCell<MessagePool>>,
     message_closure: Closure<dyn FnMut(JsValue)>,
     shake_frame: (u64, usize),
+    selected_bug_index: Option<usize>,
 }
 
 impl GameState {
-    pub fn new(lobby_settings: LobbySettings) -> GameState {
+    pub fn new(lobby_settings: LobbySettings, session_id: String) -> GameState {
         let message_pool = Rc::new(RefCell::new(MessagePool::new()));
 
         let message_closure = {
@@ -46,7 +50,11 @@ impl GameState {
         };
 
         if let shared::LobbySort::Online(0) = lobby_settings.sort() {
-            let _ = create_new_lobby(lobby_settings.clone())
+            let _ = create_new_lobby(lobby_settings.clone(), session_id)
+                .unwrap()
+                .then(&message_closure);
+        } else if let shared::LobbySort::Online(lobby_id) = lobby_settings.sort() {
+            let _ = send_ready(*lobby_id, session_id)
                 .unwrap()
                 .then(&message_closure);
         }
@@ -91,12 +99,12 @@ impl GameState {
 
         GameState {
             interface: root_element,
-            lobby: Lobby::new(lobby_settings),
+            lobby: Lobby::new(lobby_settings, 0.0),
             particle_system: ParticleSystem::default(),
             message_pool,
             message_closure,
             shake_frame: (0, 0),
-            // physics: Physics::from_settings(),
+            selected_bug_index: None,
         }
     }
 
@@ -121,15 +129,47 @@ impl State for GameState {
             (pointer.location.1 - 128) as f32 / 16.0
         ];
 
-        if let Some(bug) = self.lobby.game.intersecting_bug(point) {
-            let (dx, dy) = local_to_screen(bug.rigid_body.translation());
+        if let Some((_, rigid_body, bug_data)) = self.lobby.game.intersecting_bug(point) {
+            let (dx, dy) = local_to_screen(rigid_body.translation());
 
             draw_image_centered(context, atlas, 0.0, 176.0, 32.0, 32.0, dx, dy)?;
         }
 
         for (index, bug) in self.lobby.game.iter_bugs().enumerate() {
-            draw_bug(context, atlas, &bug, index, frame)?;
+            draw_bug(context, atlas, bug, index, frame)?;
+            draw_bug_impulse(context, atlas, bug, index, frame)?;
         }
+
+        if let Some(selected_bug_index) = self.selected_bug_index {
+            if let Some((rigid_body, bug_data)) = self.lobby.game.get_bug(selected_bug_index) {
+                let (dx, dy) = local_to_screen(rigid_body.translation());
+
+                draw_image_centered(context, atlas, 0.0, 176.0, 32.0, 32.0, dx, dy)?;
+            }
+        }
+
+        draw_text(
+            context,
+            atlas,
+            8.0,
+            8.0,
+            format!("{:?}", self.lobby.settings).as_str(),
+        )?;
+        draw_text(
+            context,
+            atlas,
+            8.0,
+            24.0,
+            format!(
+                "{:?}",
+                self.lobby
+                    .game
+                    .iter_bugs()
+                    .map(|(a, b)| b)
+                    .collect::<Vec<&BugData>>()
+            )
+            .as_str(),
+        )?;
 
         Ok(())
     }
@@ -142,9 +182,75 @@ impl State for GameState {
         let frame = app_context.frame;
         let pointer = &app_context.pointer;
 
-        let message_pool = self.message_pool.clone();
+        let point = point![
+            (pointer.location.0 - 128) as f32 / 16.0,
+            (pointer.location.1 - 128) as f32 / 16.0
+        ];
 
-        self.lobby.tick();
+        let mut message_pool = self.message_pool.borrow_mut();
+
+        for message in &message_pool.messages {
+            match message {
+                Message::Ok => (),
+                Message::Lobby(lobby) => {
+                    self.lobby = *lobby.clone();
+                }
+                Message::Lobbies(lobbies) => (),
+                Message::LobbyError(_) => (),
+                Message::Move(_) => (),
+                Message::Moves(_) => (),
+            }
+        }
+
+        message_pool.clear();
+
+        if message_pool.available(frame) {
+            request_turns_since(lobby_id, 0);
+
+            message_pool.block(frame);
+        }
+
+        if let Some(bug_index) = self.selected_bug_index {
+            if let Some((rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
+                let impulse_intent = vector![point.x, point.y] - rigid_body.translation();
+                bug_data.set_impulse_intent(impulse_intent);
+            }
+        }
+
+        if let Some((rigid_body_handle, rigid_body, bug_data)) =
+            self.lobby.game.intersecting_bug_mut(point)
+        {
+            if pointer.clicked() {
+                self.selected_bug_index = Some(rigid_body_handle);
+            }
+        } else {
+            if pointer.clicked() {
+                if let Some(bug_index) = self.selected_bug_index {
+                    if let Some((rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
+                        if let LobbySort::Online(lobby_id) = self.lobby.settings.sort() {
+                            send_message(
+                                *lobby_id,
+                                app_context.session_id.clone().unwrap(),
+                                Message::Move(Turn {
+                                    impulse_intents: HashMap::from([(
+                                        bug_index,
+                                        *bug_data.impulse_intent(),
+                                    )]),
+                                }),
+                            );
+                        }
+                    }
+                }
+
+                self.selected_bug_index = None;
+            }
+        }
+
+        // if pointer.alt_clicked() {
+        //     self.lobby.game.execute_turn();
+        // }
+
+        self.lobby.game.tick();
 
         None
     }

@@ -69,22 +69,26 @@ pub fn request_session() -> Request {
 }
 
 pub fn request_state(lobby_id: LobbyID) -> Request {
-    request_url("GET", &format!("{API_URL}/lobby/{lobby_id}/state"))
+    request_url("GET", &format!("{API_URL}/lobbies/{lobby_id}/state"))
 }
 
 pub fn request_turns_since(lobby_id: LobbyID, since: usize) -> Request {
-    request_url("GET", &format!("{API_URL}/lobby/{lobby_id}/turns/{since}"))
+    request_url("GET", &format!("{API_URL}/lobbies/{lobby_id}/turns/{since}"))
 }
 
-pub fn create_new_lobby(lobby_settings: LobbySettings) -> Option<Promise> {
-    let session_request = SessionNewLobby { lobby_settings };
+pub fn request_lobbies() -> Request {
+    request_url("GET", &format!("{API_URL}/lobbies/"))
+}
+
+pub fn create_new_lobby(lobby_settings: LobbySettings, session_id: String) -> Option<Promise> {
+    let session_request = SessionNewLobby { lobby_settings, session_id };
 
     if let Ok(json) = serde_json::to_string(&session_request) {
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.body(Some(&json.into()));
 
-        let url = format!("{API_URL}/lobby/create");
+        let url = format!("{API_URL}/lobbies/create");
 
         let request = &Request::new_with_str_and_init(&url, &opts).unwrap();
 
@@ -121,11 +125,11 @@ pub fn post_probe(url: String, session_id: String) -> Option<Promise> {
 }
 
 pub fn send_ready(lobby_id: LobbyID, session_id: String) -> Option<Promise> {
-    post_probe(format!("{API_URL}/lobby/{lobby_id}/ready"), session_id)
+    post_probe(format!("{API_URL}/lobbies/{lobby_id}/ready"), session_id)
 }
 
 pub fn send_rematch(lobby_id: LobbyID, session_id: String) -> Option<Promise> {
-    post_probe(format!("{API_URL}/lobby/{lobby_id}/rematch"), session_id)
+    post_probe(format!("{API_URL}/lobbies/{lobby_id}/rematch"), session_id)
 }
 
 pub fn send_message(lobby_id: LobbyID, session_id: String, message: Message) -> Option<Promise> {
@@ -139,7 +143,7 @@ pub fn send_message(lobby_id: LobbyID, session_id: String, message: Message) -> 
         opts.method("POST");
         opts.body(Some(&json.into()));
 
-        let url = format!("{API_URL}/lobby/{lobby_id}/act");
+        let url = format!("{API_URL}/lobbies/{lobby_id}/act");
 
         let request = &Request::new_with_str_and_init(&url, &opts).unwrap();
 

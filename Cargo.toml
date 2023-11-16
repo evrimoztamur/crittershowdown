@@ -2,7 +2,7 @@
 name = "crittershowdown"
 version = "0.1.0"
 edition = "2021"
-description = "Maginet is a multiplayer turn-based tactics game built in Rust and compiled to WebAssembly."
+description = "Critter Showdown is a multiplayer turn-based tactics game built in Rust and compiled to WebAssembly."
 repository = "https://github.com/evrimoztamur/crittershowdown/"
 
 [workspace]
@@ -69,3 +69,6 @@ features = [
     'Storage',
     'Window',
 ]
+
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

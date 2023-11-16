@@ -14,3 +14,4 @@ nalgebra = "0.32.3"
 rand_chacha = "0.3.1"
 rapier2d = { version = "0.17.2", features = ["enhanced-determinism", "serde-serialize"] }
 serde = { version = "1.0.160", features = ["derive"] }
+serde_json_any_key = "2.0.0"
