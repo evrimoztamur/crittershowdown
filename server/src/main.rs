@@ -13,7 +13,7 @@ use axum::{
 };
 use rand::Rng;
 use shared::{
-    Lobby, LobbyError, LobbySort, Message, SessionMessage, SessionNewLobby, SessionRequest,
+    Lobby, LobbyError, LobbySort, Message, SessionMessage, SessionNewLobby, SessionRequest, Turn,
 };
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -63,7 +63,9 @@ async fn create_lobby(
 
     let mut lobby = Lobby::new(session_message.lobby_settings, timestamp());
 
-    lobby.join_player(session_message.session_id, timestamp()).unwrap();
+    lobby
+        .join_player(session_message.session_id, timestamp())
+        .unwrap();
 
     lobbies.insert(lobby_id, lobby.clone());
 
@@ -82,16 +84,29 @@ async fn get_turns_since(
     State(state): State<AppState>,
     Path((id, since)): Path<(u16, usize)>,
 ) -> Json<Message> {
-    let lobbies = state.lobbies.lock().unwrap();
+    let mut lobbies = state.lobbies.lock().unwrap();
 
-    if let Some(lobby) = lobbies.get(&id) {
-        // if lobby.all_ready() {
-        //     let turns_since: Vec<Turn> =
-        //         lobby.game.turns_since(since).into_iter().cloned().collect();
-        //     Json(Message::Moves(turns_since))
-        // } else {
-        Json(Message::Lobby(Box::new(lobby.clone())))
-        // }
+    if let Some(lobby) = lobbies.get_mut(&id) {
+        if lobby.all_ready() {
+            let last_beat = lobby.last_beat();
+
+            let since_last_beat = timestamp() - last_beat;
+
+            if since_last_beat > 7.0 {
+                let mut turn = lobby.game.aggregate_turn();
+                turn.timestamp = timestamp();
+                lobby.game.execute_turn(&turn);
+            }
+
+            let turns_since: Vec<Turn> =
+                lobby.game.turns_since(since).into_iter().cloned().collect();
+
+            // println!("{:#?}", turns_since);
+
+            Json(Message::TurnSync(turns_since, lobby.target_tick()))
+        } else {
+            Json(Message::Lobby(Box::new(lobby.clone())))
+        }
     } else {
         Json(Message::LobbyError(LobbyError(
             "lobby does not exist".to_string(),
@@ -137,9 +152,10 @@ async fn post_ready(
     let mut lobbies = state.lobbies.lock().unwrap();
 
     Json(match lobbies.get_mut(&id) {
-        Some(lobby) => lobby
-            .join_player(session_request.session_id, timestamp())
-            .into(),
+        Some(lobby) => match lobby.join_player(session_request.session_id, timestamp()) {
+            Ok(_) => Message::Lobby(Box::new(lobby.clone())),
+            Err(err) => Message::LobbyError(err),
+        },
         None => Message::LobbyError(LobbyError("lobby does not exist".to_string())),
     })
 }

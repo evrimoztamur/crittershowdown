@@ -165,7 +165,7 @@ impl Lobby {
             let since_the_epoch = start
                 .duration_since(UNIX_EPOCH)
                 .expect("time went backwards");
-        
+
             since_the_epoch.as_secs_f64()
         }
 
@@ -246,6 +246,20 @@ impl Lobby {
         self.players
             .iter()
             .any(|(_, player)| timestamp - player.last_heartbeat < 15.0)
+    }
+
+    /// last bewat
+    pub fn last_beat(&self) -> f64 {
+        if let Some(turn) = self.game.last_turn() {
+            turn.timestamp
+        } else {
+            self.first_heartbeat
+        }
+    }
+
+    /// target tick for this lobby
+    pub fn target_tick(&self) -> u64 {
+        ((self.game.all_turns_count() as f64 - 1.0) * 7.0 * 60.0).max(0.0) as u64
     }
 }
 

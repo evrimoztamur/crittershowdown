@@ -12,7 +12,7 @@ pub enum Message {
     /// A single [`Turn`].
     Move(Turn),
     /// A list of [`Turn`]s for synchronising observers who may be multiple turns behind.
-    Moves(Vec<Turn>),
+    TurnSync(Vec<Turn>, u64),
     /// An entire [`Lobby`] state for complete synchronisation.
     Lobby(Box<Lobby>),
     /// List of lobbies

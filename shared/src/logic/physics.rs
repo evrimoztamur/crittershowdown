@@ -37,7 +37,7 @@ impl Physics {
             .user_data(index as u128)
             .build();
 
-        let collider = ColliderBuilder::ball(0.5).restitution(0.4).build();
+        let collider = ColliderBuilder::ball(0.5).restitution(0.7).build();
         let ball_body_handle = self.rigid_body_set.insert(rigid_body);
 
         self.collider_set
@@ -142,27 +142,30 @@ impl Default for Physics {
             query_pipeline,
         };
 
+        let map_width = 18.0;
+        let map_height = 12.0;
+
         /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(5.0, 0.1)
-            .translation(vector![0.0, -5.0])
+        let collider = ColliderBuilder::cuboid(map_width / 2.0, 0.5)
+            .translation(vector![0.0, -map_height / 2.0])
             .build();
         physics.collider_set.insert(collider);
 
         /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(5.0, 0.1)
-            .translation(vector![0.0, 5.0])
+        let collider = ColliderBuilder::cuboid(map_width / 2.0, 0.5)
+            .translation(vector![0.0, map_height / 2.0])
             .build();
         physics.collider_set.insert(collider);
 
         /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(0.1, 5.0)
-            .translation(vector![5.0, 0.0])
+        let collider = ColliderBuilder::cuboid(0.5, map_height / 2.0)
+            .translation(vector![map_width / 2.0, 0.0])
             .build();
         physics.collider_set.insert(collider);
 
         /* Create the ground. */
-        let collider = ColliderBuilder::cuboid(0.1, 5.0)
-            .translation(vector![-5.0, 0.0])
+        let collider = ColliderBuilder::cuboid(0.5, map_height / 2.0)
+            .translation(vector![-map_width / 2.0, 0.0])
             .build();
         physics.collider_set.insert(collider);
 

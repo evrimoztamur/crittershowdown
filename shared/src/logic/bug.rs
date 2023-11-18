@@ -50,7 +50,9 @@ impl BugData {
     pub fn set_impulse_intent(&mut self, impulse_intent: Vector2<f32>) {
         let magnitude = impulse_intent.magnitude().min(4.0);
 
-        self.impulse_intent = impulse_intent.normalize() * magnitude;
+        if impulse_intent.magnitude() > 0.05 {
+            self.impulse_intent = impulse_intent.normalize() * magnitude;
+        }
     }
 
     /// TODO docs

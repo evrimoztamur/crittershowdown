@@ -159,6 +159,7 @@ version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
  "futures",
+ "itertools 0.12.0",
  "js-sys",
  "nalgebra",
  "rapier2d",
@@ -495,6 +496,15 @@ name = "itertools"
 version = "0.10.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
+version = "0.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "25db6b064527c5d482d0423354fcd07a89a2dfe07b67892e62411946db7f07b0"
 dependencies = [
  "either",
 ]
@@ -1047,7 +1057,7 @@ version = "0.1.0"
 dependencies = [
  "data-encoding",
  "data-encoding-macro",
- "itertools",
+ "itertools 0.10.5",
  "nalgebra",
  "rand_chacha",
  "rapier2d",
