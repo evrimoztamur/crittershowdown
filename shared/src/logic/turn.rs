@@ -11,5 +11,7 @@ pub struct Turn {
     #[serde(with = "any_key_map")]
     pub impulse_intents: HashMap<usize, Vector2<f32>>,
     /// time stamp
-    pub timestamp: f64
+    pub timestamp: f64,
+    /// index
+    pub index: usize,
 }

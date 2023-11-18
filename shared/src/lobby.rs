@@ -9,7 +9,7 @@ use rand_chacha::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{Game, Message, Team};
+use crate::{Game, Message, Team, Turn};
 
 // #[cfg(feature = "server")]
 // use crate::Turn;
@@ -241,6 +241,11 @@ impl Lobby {
         &self.players
     }
 
+    /// turns
+    pub fn turns(&self) -> &Vec<Turn> {
+        &self.game.turns()
+    }
+
     /// Checks if any players are connected to this lobby
     pub fn any_connected(&self, timestamp: f64) -> bool {
         self.players
@@ -255,11 +260,6 @@ impl Lobby {
         } else {
             self.first_heartbeat
         }
-    }
-
-    /// target tick for this lobby
-    pub fn target_tick(&self) -> u64 {
-        ((self.game.all_turns_count() as f64 - 1.0) * 7.0 * 60.0).max(0.0) as u64
     }
 }
 

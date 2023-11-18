@@ -66,13 +66,13 @@ const LOCAL_SCALE: f64 = 16.0;
 pub fn local_to_screen(local: &Vector2<f32>) -> (f64, f64) {
     (
         local.x as f64 * LOCAL_SCALE + 384.0 / 2.0,
-        local.y as f64 * LOCAL_SCALE + 256.0 / 2.0,
+        local.y as f64 * LOCAL_SCALE + 360.0 / 2.0,
     )
 }
 pub fn screen_to_local(screen: (f64, f64)) -> (f64, f64) {
     (
         (screen.0 - 384.0 / 2.0) / LOCAL_SCALE,
-        (screen.1 - 256.0 / 2.0) / LOCAL_SCALE,
+        (screen.1 - 360.0 / 2.0) / LOCAL_SCALE,
     )
 }
 

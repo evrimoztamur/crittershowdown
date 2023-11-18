@@ -79,9 +79,9 @@ async fn start() -> Result<(), JsValue> {
 
     let canvas_settings = CanvasSettings::new(
         384 + 16,
-        256 + 16,
+        360 + 16,
         384,
-        256,
+        360,
         2.0 * device_pixel_ratio,
         window().inner_width().unwrap().as_f64().unwrap()
             < window().inner_height().unwrap().as_f64().unwrap(),

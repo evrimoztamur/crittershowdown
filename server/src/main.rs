@@ -101,9 +101,11 @@ async fn get_turns_since(
             let turns_since: Vec<Turn> =
                 lobby.game.turns_since(since).into_iter().cloned().collect();
 
-            // println!("{:#?}", turns_since);
-
-            Json(Message::TurnSync(turns_since, lobby.target_tick()))
+            if turns_since.is_empty() {
+                Json(Message::Ok)
+            } else {
+                Json(Message::TurnSync(turns_since))
+            }
         } else {
             Json(Message::Lobby(Box::new(lobby.clone())))
         }

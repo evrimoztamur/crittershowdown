@@ -249,9 +249,9 @@ impl App {
         match &mut self.state_sort {
             StateSort::Game(state) => {
                 match event.code().as_str() {
-                    // "KeyM" => {
-                    //     console::log_1(&format!("{:?}", state.lobby()).into());
-                    // }
+                    "KeyM" => {
+                        state.print_turns();
+                    }
                     _ => (),
                 };
             }

@@ -1,4 +1,4 @@
-use nalgebra::Vector2;
+use nalgebra::{vector, Vector2};
 use rapier2d::dynamics::RigidBody;
 use serde::{Deserialize, Serialize};
 
@@ -50,9 +50,11 @@ impl BugData {
     pub fn set_impulse_intent(&mut self, impulse_intent: Vector2<f32>) {
         let magnitude = impulse_intent.magnitude().min(4.0);
 
-        if impulse_intent.magnitude() > 0.05 {
-            self.impulse_intent = impulse_intent.normalize() * magnitude;
-        }
+        self.impulse_intent = if impulse_intent.magnitude() > 0.05 {
+            impulse_intent.normalize() * magnitude
+        } else {
+            vector![0.0, 0.0]
+        };
     }
 
     /// TODO docs

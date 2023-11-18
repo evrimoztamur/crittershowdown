@@ -35,7 +35,6 @@ pub struct GameState {
     message_closure: Closure<dyn FnMut(JsValue)>,
     shake_frame: (u64, usize),
     selected_bug_index: Option<usize>,
-    server_target_tick: u64,
 }
 
 impl GameState {
@@ -108,7 +107,6 @@ impl GameState {
             message_closure,
             shake_frame: (0, 0),
             selected_bug_index: None,
-            server_target_tick: 0,
         }
     }
 
@@ -127,6 +125,11 @@ impl GameState {
             None
         }
     }
+
+    pub(crate) fn print_turns(&self) {
+        let indexes: Vec<_> = self.lobby.turns().iter().map(|v| v.index).collect();
+        console::log_1(&format!("{:#?}", indexes).into());
+    }
 }
 
 impl State for GameState {
@@ -144,6 +147,17 @@ impl State for GameState {
 
         let point = tuple_as!(screen_to_local(tuple_as!(pointer.location, f64)), f32);
         let point = point![point.0, point.1];
+
+        draw_image_centered(
+            context,
+            atlas,
+            360.0,
+            0.0,
+            360.0,
+            360.0,
+            384.0 / 2.0,
+            360.0 / 2.0,
+        )?;
 
         if let Some((_, rigid_body, bug_data)) = self.lobby.game.intersecting_bug(point) {
             let (dx, dy) = local_to_screen(rigid_body.translation());
@@ -191,7 +205,7 @@ impl State for GameState {
             atlas,
             ((384 - 7 * 24) / 2, 8),
             (7 * 24, 8),
-            "#000",
+            "#002a2a",
             &crate::app::ContentElement::None,
             pointer,
             frame,
@@ -241,12 +255,30 @@ impl State for GameState {
             16.0,
             format!("{:?}", self.lobby.game.ticks()).as_str(),
         )?;
+        // draw_text(
+        //     context,
+        //     atlas,
+        //     8.0,
+        //     24.0,
+        //     format!("{:?}", self.lobby.game.target_tick()).as_str(),
+        // )?;
+        // draw_text(
+        //     context,
+        //     atlas,
+        //     72.0,
+        //     16.0,
+        //     format!(
+        //         "{:?}",
+        //         self.lobby.game.target_tick().saturating_sub(self.lobby.game.ticks())
+        //     )
+        //     .as_str(),
+        // )?;
         draw_text(
             context,
             atlas,
             8.0,
             32.0,
-            format!("{:?}", self.lobby.game.turns()).as_str(),
+            format!("{:?}", self.lobby.game.turns_count()).as_str(),
         )?;
         draw_text(
             context,
@@ -256,22 +288,22 @@ impl State for GameState {
             format!("{:?}", self.lobby.game.all_turns_count()).as_str(),
         )?;
 
-        if let Some(turn) = self.lobby.game.last_turn() {
-            for (i, (bug, intent)) in turn
-                .impulse_intents
-                .iter()
-                .enumerate()
-                .sorted_by(|a, b| a.0.cmp(&b.0))
-            {
-                draw_text(
-                    context,
-                    atlas,
-                    8.0,
-                    64.0 + i as f64 * 12.0,
-                    format!("{:?} {:?}", bug, intent).as_str(),
-                )?;
-            }
-        }
+        // if let Some(turn) = self.lobby.game.last_turn() {
+        //     for (i, (bug, intent)) in turn
+        //         .impulse_intents
+        //         .iter()
+        //         .enumerate()
+        //         .sorted_by(|a, b| a.0.cmp(&b.0))
+        //     {
+        //         draw_text(
+        //             context,
+        //             atlas,
+        //             8.0,
+        //             64.0 + i as f64 * 12.0,
+        //             format!("{:?} {:?}", bug, intent).as_str(),
+        //         )?;
+        //     }
+        // }
 
         // console::log_1(&format!("{:?}", self.lobby.game.get_bug(0)).into());
 
@@ -302,9 +334,8 @@ impl State for GameState {
                 Message::Lobbies(lobbies) => (),
                 Message::LobbyError(_) => (),
                 Message::Move(_) => (),
-                Message::TurnSync(turns, target_tick) => {
-                    self.server_target_tick = *target_tick;
-                    self.lobby.game.queue_turns(&mut turns.clone());
+                Message::TurnSync(turns) => {
+                    self.lobby.game.queue_turns(turns.clone());
                 }
             }
         }
@@ -313,8 +344,11 @@ impl State for GameState {
 
         if message_pool.available(frame) {
             if let LobbySort::Online(lobby_id) = self.lobby.settings.sort() {
-                let _ = fetch(&request_turns_since(*lobby_id, self.lobby.game.turns()))
-                    .then(&self.message_closure);
+                let _ = fetch(&request_turns_since(
+                    *lobby_id,
+                    self.lobby.game.all_turns_count(),
+                ))
+                .then(&self.message_closure);
             }
 
             message_pool.block(frame);
@@ -333,6 +367,25 @@ impl State for GameState {
             self.lobby.game.intersecting_bug_mut(point)
         {
             if pointer.clicked() && Some(*bug_data.team()) == my_team {
+                if let Some(bug_index) = self.selected_bug_index {
+                    if let Some((rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
+                        if let LobbySort::Online(lobby_id) = self.lobby.settings.sort() {
+                            send_message(
+                                *lobby_id,
+                                app_context.session_id.clone().unwrap(),
+                                Message::Move(Turn {
+                                    impulse_intents: HashMap::from([(
+                                        bug_index,
+                                        *bug_data.impulse_intent(),
+                                    )]),
+                                    timestamp: 0.0,
+                                    index: self.lobby.game.turns_count(),
+                                }),
+                            );
+                        }
+                    }
+                }
+
                 self.selected_bug_index = Some(rigid_body_handle);
             }
         } else {
@@ -349,6 +402,7 @@ impl State for GameState {
                                         *bug_data.impulse_intent(),
                                     )]),
                                     timestamp: 0.0,
+                                    index: self.lobby.game.turns_count(),
                                 }),
                             );
                         }
@@ -366,20 +420,18 @@ impl State for GameState {
         // self.target_tick =
         //     ((self.lobby.game.all_turns_count() as f64 - 1.0) * 7.0 * 60.0).max(0.0) as u64;
 
-        console::log_1(&format!("{:?}", self.server_target_tick).into());
+        // self.server_target_tick = self.server_target_tick.max(self.lobby.target_tick());
 
-        self.server_target_tick = self.server_target_tick.max(self.lobby.target_tick());
+        self.lobby.game.tick();
 
-        self.lobby.game.tick(self.server_target_tick);
-
-        console::log_1(
-            &format!(
-                "{:?} {:?}",
-                self.server_target_tick,
-                self.lobby.game.ticks()
-            )
-            .into(),
-        );
+        // console::log_1(
+        //     &format!(
+        //         "{:?} {:?}",
+        //         self.lobby.game.target_tick(),
+        //         self.lobby.game.ticks()
+        //     )
+        //     .into(),
+        // );
 
         None
     }

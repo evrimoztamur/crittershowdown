@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 use nalgebra::{vector, Point2, Vector2};
 use rapier2d::dynamics::{RigidBody, RigidBodyHandle};
@@ -15,7 +15,7 @@ pub struct Game {
     bug_handles: HashMap<usize, RigidBodyHandle>,
     ticks: u64,
     turns: Vec<Turn>,
-    queued_turns: Vec<Turn>,
+    queued_turns: VecDeque<Turn>,
 }
 
 impl Default for Game {
@@ -25,7 +25,7 @@ impl Default for Game {
             bugs: HashMap::new(),
             bug_handles: HashMap::new(),
             turns: Vec::new(),
-            queued_turns: Vec::new(),
+            queued_turns: VecDeque::new(),
             ticks: 0,
         };
 
@@ -35,15 +35,16 @@ impl Default for Game {
         for i in 0..num_bugs {
             let offset = i % team_size;
             let arc_size = 0.3;
-            let team_arc = std::f32::consts::PI * arc_size * team_size as f32;
-            let team = if i < team_size { Team::Red } else { Team::Blue };
-            let arc_offset = (std::f32::consts::PI - team_arc) / 2.0;
+            let team_arc = arc_size * (team_size - 1) as f32;
+            let arc_offset = team_arc / 2.0;
             let team_offset = if i < team_size {
-                arc_offset
+                -arc_offset
             } else {
-                std::f32::consts::PI + arc_offset
+                std::f32::consts::PI - arc_offset
             };
-            let net_offset = arc_offset + team_offset + arc_size * offset as f32;
+            let net_offset = team_offset + arc_size * offset as f32;
+
+            let team = if i < team_size { Team::Red } else { Team::Blue };
 
             game.insert_bug(
                 vector![
@@ -75,6 +76,7 @@ impl Game {
                 self.bugs.iter().map(|(i, bug)| (*i, *bug.impulse_intent())),
             ),
             timestamp: 0.0,
+            index: self.turns_count(),
         }
     }
 
@@ -90,32 +92,29 @@ impl Game {
     }
 
     /// Advances the [`Game`] simulation by one tick.
-    pub fn tick(&mut self, target_tick: u64) {
-        // let random = (Math::random() * self.physics.collider_set.len() as f64).floor() as usize;
-
-        // for (i, (_, rb)) in self.physics.rigid_body_set.iter_mut().enumerate() {
-        //     if i == random {
-        //         rb.apply_impulse(
-        //             (vector![Math::random() as f32 - 0.5, Math::random() as f32 - 0.5]).scale(2.0),
-        //             true,
-        //         );
-        //     }
-        // }
-
+    pub fn tick(&mut self) {
         if self.ticks % (7 * 60) == 0 {
-            if let Some(queued_turn) = self.queued_turns.pop() {
-                self.execute_turn(&queued_turn);
-
-                self.subtick();
+            // At each 7 second interval, check for queued turns (which are sent from the server
+            if let Some(queued_turn) = self.queued_turns.pop_front() {
+                if self.execute_turn(&queued_turn) {
+                    self.subtick();
+                }
             }
+            // Do not act until available
         } else {
             self.subtick();
         }
 
-        if target_tick.saturating_sub(self.ticks) > 0 {
-            self.tick(target_tick);
+        // Tick until we reach the next target
+        if !self.queued_turns.is_empty() {
+            self.tick();
         }
     }
+
+    // /// target tick
+    // pub fn target_tick(&self) -> u64 {
+    //     ((self.all_turns_count() as f64) * 7.0 * 60.0).max(0.0) as u64
+    // }
 
     /// force a subtick
     ///
@@ -226,25 +225,35 @@ impl Game {
     }
 
     /// records turns
-    pub fn queue_turns(&mut self, turns: &mut Vec<Turn>) {
-        self.queued_turns.append(turns);
+    pub fn queue_turns(&mut self, turns: Vec<Turn>) {
+        self.queued_turns.append(&mut VecDeque::from(turns));
     }
 
     /// Shoots all [`Bug`]s forward based on their impulses.
-    pub fn execute_turn(&mut self, turn: &Turn) {
-        for (i, bug_data) in &mut self.bugs {
-            if let Some(impulse_intent) = turn.impulse_intents.get(i) {
-                bug_data.set_impulse_intent(impulse_intent.clone());
+    pub fn execute_turn(&mut self, turn: &Turn) -> bool {
+        let pass = if let Some(last_turn) = self.last_turn() {
+            turn.index > last_turn.index
+        } else {
+            true
+        };
+
+        if pass {
+            for (i, bug_data) in &mut self.bugs {
+                if let Some(impulse_intent) = turn.impulse_intents.get(i) {
+                    bug_data.set_impulse_intent(impulse_intent.clone());
+                }
             }
+
+            for (rigid_body, data) in self.iter_bugmuts() {
+                rigid_body.apply_impulse(*data.impulse_intent() * 2.0, true)
+            }
+
+            self.reset_impulses();
+
+            self.turns.push(turn.clone());
         }
 
-        for (rigid_body, data) in self.iter_bugmuts() {
-            rigid_body.apply_impulse(*data.impulse_intent() * 2.0, true)
-        }
-
-        self.reset_impulses();
-
-        self.turns.push(turn.clone());
+        pass
     }
 
     /// reset impulses
@@ -334,7 +343,7 @@ impl Game {
                     }
                 }
             }
-            Message::TurnSync(_, _) => (),
+            Message::TurnSync(_) => (),
             Message::Lobby(_) => (),
             Message::Lobbies(_) => (),
             Message::LobbyError(_) => (),
@@ -342,12 +351,17 @@ impl Game {
     }
 
     /// num turns
-    pub fn turns(&self) -> usize {
+    pub fn turns(&self) -> &Vec<Turn> {
+        &self.turns
+    }
+
+    /// num turns
+    pub fn turns_count(&self) -> usize {
         self.turns.len()
     }
 
     /// num turns plus queued
     pub fn all_turns_count(&self) -> usize {
-        self.turns() + self.queued_turns.len()
+        self.turns_count() + self.queued_turns.len()
     }
 }

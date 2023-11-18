@@ -209,7 +209,7 @@ impl State for MainMenuState {
                 }
                 Message::LobbyError(_) => (),
                 Message::Move(_) => (),
-                Message::TurnSync(_,_) => (),
+                Message::TurnSync(_) => (),
             }
         }
 
