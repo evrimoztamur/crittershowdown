@@ -142,8 +142,8 @@ impl Default for Physics {
             query_pipeline,
         };
 
-        let map_width = 18.0;
-        let map_height = 12.0;
+        let map_width = 23.0;
+        let map_height = 23.0;
 
         /* Create the ground. */
         let collider = ColliderBuilder::cuboid(map_width / 2.0, 0.5)
