@@ -1,4 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    hash::BuildHasher,
+};
 
 use nalgebra::{vector, Point2, Vector2};
 use rapier2d::dynamics::{RigidBody, RigidBodyHandle};
@@ -16,6 +19,8 @@ pub struct Game {
     ticks: u64,
     turns: Vec<Turn>,
     queued_turns: VecDeque<Turn>,
+    capture_radius: f32,
+    capture_progress: i32,
 }
 
 impl Default for Game {
@@ -27,6 +32,8 @@ impl Default for Game {
             turns: Vec::new(),
             queued_turns: VecDeque::new(),
             ticks: 0,
+            capture_radius: 4.0,
+            capture_progress: 0,
         };
 
         let team_size = 6;
@@ -48,8 +55,8 @@ impl Default for Game {
 
             game.insert_bug(
                 vector![
-                    0.0 + (net_offset).cos() * 4.0,
-                    0.0 + (net_offset).sin() * 4.0
+                    0.0 + (net_offset).cos() * 5.0,
+                    0.0 + (net_offset).sin() * 5.0
                 ],
                 BugData::new(crate::BugSort::WaterBeetle, team),
             );
@@ -93,22 +100,45 @@ impl Game {
 
     /// Advances the [`Game`] simulation by one tick.
     pub fn tick(&mut self) {
-        if self.ticks % (7 * 60) == 0 {
+        self.ticks += 1;
+
+        let turn_ticks = self.turn_ticks();
+        let turn_tick_count = self.turn_tick_count();
+
+        if turn_ticks == 0 {
             // At each 7 second interval, check for queued turns (which are sent from the server
             if let Some(queued_turn) = self.queued_turns.pop_front() {
                 if self.execute_turn(&queued_turn) {
-                    self.subtick();
+                    self.tick_physics();
                 }
+            } else {
+                // Do not progress ticks
+                self.ticks -= 1;
             }
             // Do not act until available
-        } else {
-            self.subtick();
+        } else if turn_ticks < turn_tick_count / 2 {
+            self.tick_physics();
+        }
+        if turn_ticks == turn_tick_count / 2 {
+            self.tick_turn();
         }
 
         // Tick until we reach the next target
         if !self.queued_turns.is_empty() {
             self.tick();
         }
+    }
+
+    fn turn_ticks(&self) -> u64 {
+        self.ticks % self.turn_tick_count()
+    }
+
+    fn turn_duration(&self) -> u64 {
+        7
+    }
+
+    fn turn_tick_count(&self) -> u64 {
+        self.turn_duration() * 60
     }
 
     // /// target tick
@@ -118,9 +148,25 @@ impl Game {
 
     /// force a subtick
     ///
-    pub fn subtick(&mut self) {
+    pub fn tick_turn(&mut self) {
+        let mut tip = 0;
+
+        for (rigid_body, bug_data) in self.iter_bugs() {
+            if rigid_body.translation().magnitude() < self.capture_radius {
+                match bug_data.team() {
+                    Team::Red => tip += 1,
+                    Team::Blue => tip -= 1,
+                }
+            }
+        }
+
+        self.capture_progress += tip;
+    }
+
+    /// force a subtick
+    ///
+    pub fn tick_physics(&mut self) {
         self.physics.tick();
-        self.ticks += 1;
     }
 
     /// Find the [`Bug`] that's the closest to the given [`Point2`].
@@ -363,5 +409,15 @@ impl Game {
     /// num turns plus queued
     pub fn all_turns_count(&self) -> usize {
         self.turns_count() + self.queued_turns.len()
+    }
+
+    /// diameter of the capture zone
+    pub fn capture_progress(&self) -> f32 {
+        self.capture_progress as f32 / self.bugs.len() as f32
+    }
+
+    /// cap rad
+    pub fn capture_radius(&self) -> f32 {
+        self.capture_radius
     }
 }

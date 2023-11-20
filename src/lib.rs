@@ -81,8 +81,8 @@ async fn start() -> Result<(), JsValue> {
         384,
         360,
         2.0 * device_pixel_ratio,
-        window().inner_width().unwrap().as_f64().unwrap()
-            < window().inner_height().unwrap().as_f64().unwrap(),
+        false, // window().inner_width().unwrap().as_f64().unwrap()
+               //     < window().inner_height().unwrap().as_f64().unwrap(),
     );
 
     // atlas_img.set_src(&format!("{RESOURCE_BASE_URL}/static/png/atlas.png?v=6"));
@@ -124,7 +124,9 @@ async fn start() -> Result<(), JsValue> {
 
         atlas_context.draw_image_with_html_image_element(&atlas_img, 0.0, 0.0)?;
 
-        let app = App::new(&canvas_settings, audio_system.clone());
+        // window().document().unwrap().body().unwrap().append_child(&atlas)?;
+
+        let app = App::new(&canvas_settings, atlas_context, audio_system.clone());
 
         let app = Rc::new(RefCell::new(app));
 

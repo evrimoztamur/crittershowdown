@@ -48,6 +48,7 @@ features = [
     'HtmlAudioElement',
     'HtmlMediaElement',
     'AudioContext',
+    'ImageData',
     'AudioBuffer',
     'AudioNode',
     'GainNode',

@@ -2,7 +2,7 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use itertools::Itertools;
 use js_sys::Math;
-use nalgebra::{vector, Point2};
+use nalgebra::{vector, ComplexField, Point2};
 use rapier2d::{dynamics::RigidBodyHandle, prelude::point};
 use shared::{BugData, Lobby, LobbySettings, LobbySort, Message, Team, Turn};
 use wasm_bindgen::{prelude::Closure, JsValue};
@@ -15,8 +15,8 @@ use crate::{
         LabelTrim, ParticleSystem, StateSort, ToggleButtonElement, UIElement,
     },
     draw::{
-        draw_bug, draw_bug_impulse, draw_image, draw_image_centered, draw_label, draw_text,
-        local_to_screen, screen_to_local,
+        draw_bug, draw_bug_impulse, draw_image, draw_image_centered, draw_label, draw_sand_circle,
+        draw_text, local_to_screen, screen_to_local,
     },
     net::{create_new_lobby, fetch, request_turns_since, send_message, send_ready, MessagePool},
     tuple_as, window,
@@ -35,6 +35,7 @@ pub struct GameState {
     message_closure: Closure<dyn FnMut(JsValue)>,
     shake_frame: (u64, usize),
     selected_bug_index: Option<usize>,
+    animated_capture_progress: f32,
 }
 
 impl GameState {
@@ -107,6 +108,7 @@ impl GameState {
             message_closure,
             shake_frame: (0, 0),
             selected_bug_index: None,
+            animated_capture_progress: 0.0,
         }
     }
 
@@ -148,6 +150,11 @@ impl State for GameState {
         let point = tuple_as!(screen_to_local(tuple_as!(pointer.location, f64)), f32);
         let point = point![point.0, point.1];
 
+        let length = 7.0 * 24.0
+            - ((self.lobby.game.ticks() % (7 * 60)) as f64 / 60.0 * 24.0)
+                .floor()
+                .clamp(0.0, 7.0 * 24.0);
+
         draw_image_centered(
             context,
             atlas,
@@ -157,6 +164,89 @@ impl State for GameState {
             360.0,
             384.0 / 2.0,
             360.0 / 2.0,
+        )?;
+
+        self.animated_capture_progress +=
+            (self.lobby.game.capture_progress() - self.animated_capture_progress) * 0.05;
+
+        draw_sand_circle(
+            &app_context.atlas_context,
+            self.animated_capture_progress,
+            self.lobby.game.capture_radius() * 16.0,
+        )?;
+
+        draw_image_centered(
+            context,
+            atlas,
+            360.0,
+            360.0,
+            360.0,
+            360.0,
+            384.0 / 2.0,
+            360.0 / 2.0,
+        )?;
+
+        draw_label(
+            context,
+            atlas,
+            ((384 - 7 * 24) / 2, 8),
+            (7 * 24, 8),
+            "#002a2a",
+            &crate::app::ContentElement::None,
+            pointer,
+            frame,
+            &LabelTrim::Round,
+            false,
+        )?;
+
+        draw_label(
+            context,
+            atlas,
+            ((384 - (length as i32 / 2) as i32 * 2) / 2, 8),
+            ((length as i32 / 2) as i32 * 2, 8),
+            "#fff",
+            &crate::app::ContentElement::None,
+            pointer,
+            frame,
+            &LabelTrim::Round,
+            false,
+        )?;
+
+        let capture_progress = self.animated_capture_progress;
+        let length = (capture_progress * 7.0 * 12.0)
+            .abs()
+            .floor()
+            .clamp(0.0, 7.0 * 12.0);
+        let length = (length as i32 / 2) * 2;
+
+        draw_label(
+            context,
+            atlas,
+            ((384 - 7 * 24) / 2, 360 - 16),
+            (7 * 24, 8),
+            "#002a2a",
+            &crate::app::ContentElement::None,
+            pointer,
+            frame,
+            &LabelTrim::Round,
+            false,
+        )?;
+
+        draw_label(
+            context,
+            atlas,
+            ((384 / 2) as i32 + length.min(0), 360 - 16),
+            (length, 8),
+            if capture_progress > 0.0 {
+                "#C20005"
+            } else {
+                "#00C2BD"
+            },
+            &crate::app::ContentElement::None,
+            pointer,
+            frame,
+            &LabelTrim::Round,
+            false,
         )?;
 
         if let Some((_, rigid_body, bug_data)) = self.lobby.game.intersecting_bug(point) {
@@ -195,36 +285,6 @@ impl State for GameState {
                 draw_image_centered(context, atlas, 0.0, 176.0, 32.0, 32.0, dx, dy)?;
             }
         }
-
-        let length = ((self.lobby.game.ticks() % (7 * 60)) as f64 / 60.0 * 24.0)
-            .floor()
-            .clamp(0.0, 7.0 * 24.0);
-
-        draw_label(
-            context,
-            atlas,
-            ((384 - 7 * 24) / 2, 8),
-            (7 * 24, 8),
-            "#002a2a",
-            &crate::app::ContentElement::None,
-            pointer,
-            frame,
-            &LabelTrim::Round,
-            false,
-        )?;
-
-        draw_label(
-            context,
-            atlas,
-            ((384 - (length as i32 / 2) as i32 * 2) / 2, 8),
-            ((length as i32 / 2) as i32 * 2, 8),
-            "#fff",
-            &crate::app::ContentElement::None,
-            pointer,
-            frame,
-            &LabelTrim::Round,
-            false,
-        )?;
 
         // draw_text(
         //     context,

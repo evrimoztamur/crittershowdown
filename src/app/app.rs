@@ -31,6 +31,7 @@ pub struct AppContext {
     pub canvas_settings: CanvasSettings,
     pub text_input: Option<(String, String)>,
     pub audio_system: AudioSystem,
+    pub atlas_context: CanvasRenderingContext2d,
 }
 
 pub struct App {
@@ -40,7 +41,11 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(canvas_settings: &CanvasSettings, audio_system: AudioSystem) -> App {
+    pub fn new(
+        canvas_settings: &CanvasSettings,
+        atlas_context: CanvasRenderingContext2d,
+        audio_system: AudioSystem,
+    ) -> App {
         App {
             app_context: AppContext {
                 session_id: get_session_id(),
@@ -49,6 +54,7 @@ impl App {
                 canvas_settings: canvas_settings.clone(),
                 text_input: None,
                 audio_system,
+                atlas_context,
             },
             // state_sort: StateSort::Game(GameState::new(LobbySettings::new(shared::LobbySort::Local))),
             state_sort: StateSort::MainMenu(MainMenuState::default()),

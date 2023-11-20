@@ -3,8 +3,8 @@ use std::f64::consts::PI;
 use nalgebra::Vector2;
 use rapier2d::dynamics::RigidBody;
 use shared::BugData;
-use wasm_bindgen::{JsCast, JsValue};
-use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement};
+use wasm_bindgen::{Clamped, JsCast, JsValue};
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 use crate::{
     app::{ContentElement, LabelTrim, Particle, ParticleSort, Pointer, UIElement, BOARD_SCALE},
@@ -293,6 +293,55 @@ pub fn draw_particle(
         -4.0,
     )?;
     context.restore();
+
+    Ok(())
+}
+
+pub fn draw_sand_circle(
+    context: &CanvasRenderingContext2d,
+    capture_progress: f32,
+    radius: f32,
+) -> Result<(), JsValue> {
+    context.clear_rect(360.0, 360.0, 360.0, 360.0);
+
+    let capture_radius = (capture_progress * radius).abs();
+
+    let a: Vec<_> = (0..(360 * 360))
+        .map(|l| {
+            let x = (l % 360) as f32 - 360.0 / 2.0;
+            let y = (l / 360) as f32 - 360.0 / 2.0;
+            let q = x.hypot(y);
+
+            if q < capture_radius - 1.5 {
+                if capture_progress > 0.0 {
+                    [194, 0, 5, 127]
+                } else {
+                    [0, 194, 183, 127]
+                }
+            } else if q < capture_radius {
+                if (x.sin() + y.cos()) < 0.0 {
+                    [202, 137, 27, 127]
+                } else {
+                    if capture_progress > 0.0 {
+                        [194, 0, 5, 127]
+                    } else {
+                        [0, 194, 183, 127]
+                    }
+                }
+            } else if q < radius - 1.5 {
+                [202, 137, 27, 127]
+            } else if q < radius && (x.sin() + y.cos()) < 0.0 {
+                [202, 137, 27, 127]
+            } else {
+                [0, 0, 0, 0]
+            }
+        })
+        .flatten()
+        .collect();
+
+    let image_data = ImageData::new_with_u8_clamped_array_and_sh(Clamped(&a), 360, 360).unwrap();
+
+    context.put_image_data(&image_data, 360.0, 360.0)?;
 
     Ok(())
 }
