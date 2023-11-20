@@ -62,16 +62,17 @@ impl AudioSystem {
 
             let audio_clip = AudioClip { buffer, volume };
 
-            console::log_1(&format!("{:?}", audio_clip).into());
+            // console::log_1(&format!("{:?}", audio_clip).into());
 
             self.audio_clips.insert(clip_id, audio_clip);
         }
     }
 
     pub fn play_clip(&self, clip_id: ClipId) {
-        console::log_1(&format!("play_clip {:?}", clip_id).into());
+        // console::log_1(&format!("play_clip {:?}", clip_id).into());
         if let Some(audio_clip) = self.audio_clips.get(&clip_id) {
-            console::log_1(&format!("play_clip audio_clip {:?}", audio_clip).into());
+            // console::log_1(&format!("play_clip audio_clip {:?}", audio_clip).into());
+            
             // let audio_element = audio_clip.audio_element;
             // audio_clip.audio_element.set_current_time(0.0);
             // let _ = audio_clip.audio_element.play();

@@ -64,12 +64,12 @@ impl State for MainMenuState {
             format!("{}", self.lobby_page + 1).as_str(),
         )?;
 
-        let a: Vec<f64> = self
-            .displayed_lobbies
-            .iter()
-            .map(|(_, (_, lobby))| lobby.first_heartbeat)
-            .collect();
-        console::log_1(&format!("{:?}", a).into());
+        // let a: Vec<f64> = self
+        //     .displayed_lobbies
+        //     .iter()
+        //     .map(|(_, (_, lobby))| lobby.first_heartbeat)
+        //     .collect();
+        // console::log_1(&format!("{:?}", a).into());
 
         for (i, (lobby_id, lobby)) in &self.displayed_lobbies {
             let ir: usize = i - self.lobby_page * LOBBY_PAGE_SIZE;
@@ -178,7 +178,7 @@ impl State for MainMenuState {
             if let Some(session_id) = &app_context.session_id {
                 app_context.audio_system.play_clip_option(clip_id);
 
-                console::log_1(&format!("{}", value).into());
+                // console::log_1(&format!("{}", value).into());
                 return Some(StateSort::Game(GameState::new(
                     LobbySettings::new(LobbySort::Online(value as u16)),
                     session_id.clone(),
@@ -234,7 +234,7 @@ impl State for MainMenuState {
                 self.displayed_lobbies
                     .iter()
                     .map(|(i, (key, lobby))| {
-                        console::log_1(&format!("INTERP {}", key).into());
+                        // console::log_1(&format!("INTERP {}", key).into());
                         ButtonElement::new(
                             (384 - 88, 27 + *i as i32 * 48),
                             (24, 24),
