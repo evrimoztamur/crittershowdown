@@ -2,8 +2,8 @@ use serde::{Deserialize, Serialize};
 use shared::{LobbyError, SessionRequest};
 use wasm_bindgen::JsValue;
 use web_sys::{
-    CanvasRenderingContext2d, DomRectReadOnly, FocusEvent, HtmlCanvasElement,
-    HtmlInputElement, KeyboardEvent, MouseEvent, TouchEvent,
+    CanvasRenderingContext2d, DomRectReadOnly, FocusEvent, HtmlCanvasElement, HtmlInputElement,
+    KeyboardEvent, MouseEvent, TouchEvent,
 };
 
 use super::{AudioSystem, GameState, MainMenuState, Pointer};
@@ -296,13 +296,6 @@ pub struct CanvasSettings {
 }
 
 impl CanvasSettings {
-    pub fn inverse_interface_center(&self) -> (i32, i32) {
-        (
-            -((self.interface_width / 2) as i32),
-            -((self.interface_height / 2) as i32),
-        )
-    }
-
     pub fn element_width(&self) -> u32 {
         if self.orientation {
             (self.canvas_height as f64 * self.canvas_scale) as u32

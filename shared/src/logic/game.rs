@@ -1,12 +1,8 @@
-use std::{
-    collections::{HashMap, VecDeque},
-    hash::BuildHasher,
-};
+use std::collections::{HashMap, VecDeque};
 
 use nalgebra::{vector, Point2, Vector2};
 use rapier2d::dynamics::{RigidBody, RigidBodyHandle};
-use serde::{Deserialize, Serialize};
-use serde_json_any_key::*;
+
 
 use crate::{BugData, Message, Physics, Player, Result, Team, Turn};
 
@@ -236,7 +232,7 @@ impl Game {
         self.physics
             .rigid_body_set
             .iter()
-            .filter_map(|(rigid_body_handle, rigid_body)| {
+            .filter_map(|(_rigid_body_handle, rigid_body)| {
                 self.bugs
                     .get(&(rigid_body.user_data as usize))
                     .and_then(|data| Some((rigid_body, data)))
@@ -248,7 +244,7 @@ impl Game {
         self.physics
             .rigid_body_set
             .iter_mut()
-            .filter_map(|(rigid_body_handle, rigid_body)| {
+            .filter_map(|(_rigid_body_handle, rigid_body)| {
                 self.bugs
                     .get(&(rigid_body.user_data as usize))
                     .and_then(|data| Some((rigid_body, data)))

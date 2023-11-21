@@ -3,7 +3,6 @@ use std::{
     fs::{self, File},
     net::SocketAddr,
     sync::{Arc, Mutex},
-    time::Instant,
 };
 
 use axum::{
@@ -75,7 +74,7 @@ async fn create_lobby(
 async fn get_lobbies(State(state): State<AppState>) -> Json<Message> {
     let mut lobbies = state.lobbies.lock().unwrap();
 
-    lobbies.retain(|k, v| v.any_connected(timestamp()));
+    lobbies.retain(|_, v| v.any_connected(timestamp()));
 
     Json(Message::Lobbies(lobbies.clone()))
 }

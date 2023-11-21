@@ -1,5 +1,5 @@
 use nalgebra::{vector, Vector2};
-use rapier2d::dynamics::RigidBody;
+
 use serde::{Deserialize, Serialize};
 
 use crate::Team;

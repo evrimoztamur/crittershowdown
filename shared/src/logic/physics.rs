@@ -1,4 +1,4 @@
-use nalgebra::{point, vector, Point2, Vector2};
+use nalgebra::{vector, Point2, Vector2};
 use rapier2d::{
     dynamics::{
         CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet,
@@ -84,7 +84,6 @@ impl Physics {
             )
             .map_or(None, |(collider_handle, point_projection)| {
                 if point_projection.is_inside {
-                    let a = &self.collider_set[collider_handle];
                     Some((collider_handle, point_projection))
                 } else {
                     None

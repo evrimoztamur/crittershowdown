@@ -1,7 +1,7 @@
 
 use js_sys::{ArrayBuffer, Math, Uint8Array};
 use std::collections::HashMap;
-use wasm_bindgen::{JsCast};
+use wasm_bindgen::JsCast;
 
 use web_sys::{
     AudioBuffer, AudioContext,

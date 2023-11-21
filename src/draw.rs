@@ -1,15 +1,10 @@
-
-
 use nalgebra::Vector2;
 use rapier2d::dynamics::RigidBody;
 use shared::BugData;
 use wasm_bindgen::{Clamped, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
-use crate::{
-    app::{ContentElement, LabelTrim, Particle, ParticleSort, Pointer, UIElement, BOARD_SCALE},
-    tuple_as,
-};
+use crate::app::{ContentElement, LabelTrim, Particle, ParticleSort, Pointer, UIElement};
 
 pub fn draw_image(
     context: &CanvasRenderingContext2d,
@@ -248,13 +243,8 @@ pub fn draw_particle(
     particle: &Particle,
     frame: usize,
 ) -> Result<(), JsValue> {
-    let board_scale = tuple_as!(BOARD_SCALE, f64);
-
     context.save();
-    context.translate(
-        ((particle.position.0 + 0.5) * board_scale.0).floor(),
-        ((particle.position.1 + 0.5) * board_scale.1).floor(),
-    )?;
+    context.translate(particle.position.0.round(), particle.position.1.round())?;
 
     let spin = particle.lifetime;
     let cycle = frame

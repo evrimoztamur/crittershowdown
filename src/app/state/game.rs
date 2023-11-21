@@ -2,8 +2,8 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 
 
-use nalgebra::{vector, ComplexField};
-use rapier2d::{prelude::point};
+use nalgebra::vector;
+use rapier2d::prelude::point;
 use shared::{Lobby, LobbySettings, LobbySort, Message, Team, Turn};
 use wasm_bindgen::{prelude::Closure, JsValue};
 use web_sys::{console, CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
