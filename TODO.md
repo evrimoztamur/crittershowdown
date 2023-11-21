@@ -35,6 +35,11 @@
     - Various class-events
     - Win/Loss
 
+  - Signals
+    - Turn end
+    - Scoring point and simulation stopping
+    - Win/loss
+
 ## DONE
 
 - Mechanics
