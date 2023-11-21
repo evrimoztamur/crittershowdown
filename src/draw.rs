@@ -1,9 +1,9 @@
-use std::f64::consts::PI;
+
 
 use nalgebra::Vector2;
 use rapier2d::dynamics::RigidBody;
 use shared::BugData;
-use wasm_bindgen::{Clamped, JsCast, JsValue};
+use wasm_bindgen::{Clamped, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
 use crate::{
@@ -98,7 +98,7 @@ pub fn draw_bug(
 pub fn draw_bugdata(
     context: &CanvasRenderingContext2d,
     atlas: &HtmlCanvasElement,
-    bug_data: &BugData,
+    _bug_data: &BugData,
     index: usize,
     frame: usize,
 ) -> Result<(), JsValue> {
@@ -120,8 +120,8 @@ pub fn draw_bug_impulse(
     context: &CanvasRenderingContext2d,
     atlas: &HtmlCanvasElement,
     (rigid_body, bug_data): (&RigidBody, &BugData),
-    index: usize,
-    frame: usize,
+    _index: usize,
+    _frame: usize,
 ) -> Result<(), JsValue> {
     let (ox, oy) = local_to_screen(rigid_body.translation());
     let (dx, dy) = local_to_screen(&(rigid_body.translation() + bug_data.impulse_intent()));
@@ -307,7 +307,7 @@ pub fn draw_sand_circle(
     let capture_radius = (capture_progress * radius).abs();
 
     let a: Vec<_> = (0..(360 * 360))
-        .map(|l| {
+        .flat_map(|l| {
             let x = (l % 360) as f32 - 360.0 / 2.0;
             let y = (l / 360) as f32 - 360.0 / 2.0;
             let q = x.hypot(y);
@@ -321,12 +321,10 @@ pub fn draw_sand_circle(
             } else if q < capture_radius {
                 if (x.sin() + y.cos()) < 0.0 {
                     [202, 137, 27, 127]
+                } else if capture_progress > 0.0 {
+                    [194, 0, 5, 127]
                 } else {
-                    if capture_progress > 0.0 {
-                        [194, 0, 5, 127]
-                    } else {
-                        [0, 194, 183, 127]
-                    }
+                    [0, 194, 183, 127]
                 }
             } else if q < radius - 1.5 {
                 [202, 137, 27, 127]
@@ -336,7 +334,6 @@ pub fn draw_sand_circle(
                 [0, 0, 0, 0]
             }
         })
-        .flatten()
         .collect();
 
     let image_data = ImageData::new_with_u8_clamped_array_and_sh(Clamped(&a), 360, 360).unwrap();

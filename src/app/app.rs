@@ -1,12 +1,12 @@
 use serde::{Deserialize, Serialize};
-use shared::{LobbyError, LobbySettings, SessionRequest};
+use shared::{LobbyError, SessionRequest};
 use wasm_bindgen::JsValue;
 use web_sys::{
-    console, CanvasRenderingContext2d, DomRectReadOnly, FocusEvent, HtmlCanvasElement,
+    CanvasRenderingContext2d, DomRectReadOnly, FocusEvent, HtmlCanvasElement,
     HtmlInputElement, KeyboardEvent, MouseEvent, TouchEvent,
 };
 
-use super::{AudioSystem, ClipId, GameState, MainMenuState, Pointer, BOARD_SCALE};
+use super::{AudioSystem, GameState, MainMenuState, Pointer};
 use crate::{app::State, draw::draw_image, net::get_session_id, storage, window};
 
 /// Errors concerning the [`App`].
@@ -92,7 +92,7 @@ impl App {
             interface_context.rotate(std::f64::consts::PI / 2.0)?;
         }
 
-        let canvas_scale = self.app_context.canvas_settings.canvas_scale as f64;
+        let canvas_scale = self.app_context.canvas_settings.canvas_scale;
 
         context.scale(canvas_scale, canvas_scale)?;
         interface_context.scale(canvas_scale, canvas_scale)?;

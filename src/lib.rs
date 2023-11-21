@@ -13,9 +13,9 @@ use app::{App, AudioSystem, CanvasSettings};
 use futures::Future;
 use net::{fetch, request_session};
 use wasm_bindgen::{prelude::*, JsCast};
-use wasm_bindgen_futures::future_to_promise;
+
 use web_sys::{
-    console, CanvasRenderingContext2d, Document, DomRect, FocusEvent, HtmlCanvasElement,
+    CanvasRenderingContext2d, Document, DomRect, FocusEvent, HtmlCanvasElement,
     HtmlImageElement, HtmlInputElement, KeyboardEvent, MouseEvent, Storage, TouchEvent, Window,
 };
 
@@ -95,7 +95,7 @@ async fn start() -> Result<(), JsValue> {
     audio_system.populate_audio().await;
 
     {
-        let atlas_img_a = atlas_img.clone();
+        let _atlas_img_a = atlas_img.clone();
         let atlas_img = atlas_img.clone();
 
         // let closure = Closure::<dyn FnMut(_) -> Result<(), JsValue>>::new(move |_: JsValue| {
@@ -176,7 +176,7 @@ async fn start() -> Result<(), JsValue> {
             Rc::new(RefCell::new(Some(canvas.get_bounding_client_rect())));
 
         {
-            let canvas = canvas.clone();
+            let canvas = canvas;
             let bound = bound.clone();
             let closure = Closure::<dyn FnMut(_)>::new(move |_: JsValue| {
                 bound.replace(Some(canvas.get_bounding_client_rect()));
@@ -188,7 +188,7 @@ async fn start() -> Result<(), JsValue> {
 
         {
             let app = app.clone();
-            let text_input = text_input_element.clone();
+            let text_input = text_input_element;
             let closure = Closure::<dyn FnMut(_)>::new(move |event: FocusEvent| {
                 let mut app = app.borrow_mut();
                 let text_input = text_input.borrow();
@@ -280,7 +280,7 @@ async fn start() -> Result<(), JsValue> {
         }
 
         {
-            let app = app.clone();
+            let app = app;
             let closure = Closure::<dyn FnMut(_)>::new(move |event: KeyboardEvent| {
                 let mut app = app.borrow_mut();
                 app.on_key_down(event);

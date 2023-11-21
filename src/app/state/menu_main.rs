@@ -2,16 +2,16 @@ use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
 use shared::{Lobby, LobbySettings, LobbySort, Message};
 use wasm_bindgen::{closure::Closure, JsValue};
-use web_sys::{console, CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
+use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
 
 use super::{GameState, State};
 use crate::{
     app::{
-        Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme,
-        LabelTrim, Pointer, StateSort, UIElement, UIEvent,
+        Alignment, AppContext, ButtonElement, Interface, LabelTheme,
+        LabelTrim, StateSort, UIElement, UIEvent,
     },
-    draw::{draw_bug, draw_bugdata, draw_label, draw_text, draw_text_centered},
-    net::{create_new_lobby, fetch, request_lobbies, send_ready, MessagePool},
+    draw::{draw_bugdata, draw_label, draw_text, draw_text_centered},
+    net::{fetch, request_lobbies, MessagePool},
 };
 
 pub struct MainMenuState {
@@ -96,7 +96,7 @@ impl State for MainMenuState {
                     (-8, 0),
                     (72, 16),
                     "#2a9f55",
-                    &crate::app::ContentElement::Text(format!("{}", lobby_id), Alignment::Center),
+                    &crate::app::ContentElement::Text(format!("{lobby_id}"), Alignment::Center),
                     &pointer,
                     frame,
                     &LabelTrim::Glorious,
@@ -200,7 +200,7 @@ impl State for MainMenuState {
         for message in &message_pool.messages {
             match message {
                 Message::Ok => (),
-                Message::Lobby(lobby) => {
+                Message::Lobby(_lobby) => {
                     // self.lobbies.insert(0, *lobby.clone());
                 }
                 Message::Lobbies(lobbies) => {
@@ -233,7 +233,7 @@ impl State for MainMenuState {
             self.lobby_list_interface = Interface::new(
                 self.displayed_lobbies
                     .iter()
-                    .map(|(i, (key, lobby))| {
+                    .map(|(i, (key, _lobby))| {
                         // console::log_1(&format!("INTERP {}", key).into());
                         ButtonElement::new(
                             (384 - 88, 27 + *i as i32 * 48),

@@ -1,10 +1,10 @@
 use std::{cell::RefCell, collections::HashMap, rc::Rc};
 
-use itertools::Itertools;
-use js_sys::Math;
-use nalgebra::{vector, ComplexField, Point2};
-use rapier2d::{dynamics::RigidBodyHandle, prelude::point};
-use shared::{BugData, Lobby, LobbySettings, LobbySort, Message, Team, Turn};
+
+
+use nalgebra::{vector, ComplexField};
+use rapier2d::{prelude::point};
+use shared::{Lobby, LobbySettings, LobbySort, Message, Team, Turn};
 use wasm_bindgen::{prelude::Closure, JsValue};
 use web_sys::{console, CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
 
@@ -15,11 +15,11 @@ use crate::{
         LabelTrim, ParticleSystem, StateSort, ToggleButtonElement, UIElement,
     },
     draw::{
-        draw_bug, draw_bug_impulse, draw_image, draw_image_centered, draw_label, draw_sand_circle,
+        draw_bug, draw_bug_impulse, draw_image_centered, draw_label, draw_sand_circle,
         draw_text, local_to_screen, screen_to_local,
     },
     net::{create_new_lobby, fetch, request_turns_since, send_message, send_ready, MessagePool},
-    tuple_as, window,
+    tuple_as,
 };
 
 const BUTTON_REMATCH: usize = 1;
@@ -62,7 +62,7 @@ impl GameState {
                 .then(&message_closure);
         }
 
-        let button_menu = ToggleButtonElement::new(
+        let _button_menu = ToggleButtonElement::new(
             (-128 - 18 - 8, -9 - 12),
             (20, 20),
             BUTTON_MENU,
@@ -71,7 +71,7 @@ impl GameState {
             crate::app::ContentElement::Sprite((112, 32), (16, 16)),
         );
 
-        let button_undo = ButtonElement::new(
+        let _button_undo = ButtonElement::new(
             (-128 - 18 - 8, -9 + 12),
             (20, 20),
             BUTTON_UNDO,
@@ -118,11 +118,7 @@ impl GameState {
 
     pub fn team_for(&self, session_id: &Option<String>) -> Option<Team> {
         if let Some(session_id) = session_id {
-            if let Some(player) = self.lobby.players().get(session_id) {
-                Some(player.team)
-            } else {
-                None
-            }
+            self.lobby.players().get(session_id).map(|player| player.team)
         } else {
             None
         }
@@ -130,7 +126,7 @@ impl GameState {
 
     pub(crate) fn print_turns(&self) {
         let indexes: Vec<_> = self.lobby.turns().iter().map(|v| v.index).collect();
-        console::log_1(&format!("{:#?}", indexes).into());
+        console::log_1(&format!("{indexes:#?}").into());
     }
 }
 
@@ -138,7 +134,7 @@ impl State for GameState {
     fn draw(
         &mut self,
         context: &CanvasRenderingContext2d,
-        interface_context: &CanvasRenderingContext2d,
+        _interface_context: &CanvasRenderingContext2d,
         atlas: &HtmlCanvasElement,
         app_context: &AppContext,
     ) -> Result<(), JsValue> {
@@ -202,8 +198,8 @@ impl State for GameState {
         draw_label(
             context,
             atlas,
-            ((384 - (length as i32 / 2) as i32 * 2) / 2, 8),
-            ((length as i32 / 2) as i32 * 2, 8),
+            ((384 - (length as i32 / 2) * 2) / 2, 8),
+            ((length as i32 / 2) * 2, 8),
             "#fff",
             &crate::app::ContentElement::None,
             pointer,
@@ -235,7 +231,7 @@ impl State for GameState {
         draw_label(
             context,
             atlas,
-            ((384 / 2) as i32 + length.min(0), 360 - 16),
+            ((384 / 2) + length.min(0), 360 - 16),
             (length, 8),
             if capture_progress > 0.0 {
                 "#C20005"
@@ -249,7 +245,7 @@ impl State for GameState {
             false,
         )?;
 
-        if let Some((_, rigid_body, bug_data)) = self.lobby.game.intersecting_bug(point) {
+        if let Some((_, rigid_body, _bug_data)) = self.lobby.game.intersecting_bug(point) {
             let (dx, dy) = local_to_screen(rigid_body.translation());
 
             draw_image_centered(context, atlas, 0.0, 176.0, 32.0, 32.0, dx, dy)?;
@@ -263,7 +259,7 @@ impl State for GameState {
             }
         }
 
-        for (index, (rigid_body, bug_data)) in self.lobby.game.iter_bugs().enumerate() {
+        for (_index, (rigid_body, bug_data)) in self.lobby.game.iter_bugs().enumerate() {
             let (dx, dy) = local_to_screen(rigid_body.translation());
 
             if my_team == Some(*bug_data.team()) {
@@ -279,7 +275,7 @@ impl State for GameState {
         }
 
         if let Some(selected_bug_index) = self.selected_bug_index {
-            if let Some((rigid_body, bug_data)) = self.lobby.game.get_bug(selected_bug_index) {
+            if let Some((rigid_body, _bug_data)) = self.lobby.game.get_bug(selected_bug_index) {
                 let (dx, dy) = local_to_screen(rigid_body.translation());
 
                 draw_image_centered(context, atlas, 0.0, 176.0, 32.0, 32.0, dx, dy)?;
@@ -391,7 +387,7 @@ impl State for GameState {
                 Message::Lobby(lobby) => {
                     self.lobby = *lobby.clone();
                 }
-                Message::Lobbies(lobbies) => (),
+                Message::Lobbies(_lobbies) => (),
                 Message::LobbyError(_) => (),
                 Message::Move(_) => (),
                 Message::TurnSync(turns) => {
@@ -423,12 +419,12 @@ impl State for GameState {
             }
         }
 
-        if let Some((rigid_body_handle, rigid_body, bug_data)) =
+        if let Some((rigid_body_handle, _rigid_body, bug_data)) =
             self.lobby.game.intersecting_bug_mut(point)
         {
             if pointer.clicked() && Some(*bug_data.team()) == my_team {
                 if let Some(bug_index) = self.selected_bug_index {
-                    if let Some((rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
+                    if let Some((_rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
                         if let LobbySort::Online(lobby_id) = self.lobby.settings.sort() {
                             send_message(
                                 *lobby_id,
@@ -448,29 +444,27 @@ impl State for GameState {
 
                 self.selected_bug_index = Some(rigid_body_handle);
             }
-        } else {
-            if pointer.clicked() {
-                if let Some(bug_index) = self.selected_bug_index {
-                    if let Some((rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
-                        if let LobbySort::Online(lobby_id) = self.lobby.settings.sort() {
-                            send_message(
-                                *lobby_id,
-                                app_context.session_id.clone().unwrap(),
-                                Message::Move(Turn {
-                                    impulse_intents: HashMap::from([(
-                                        bug_index,
-                                        *bug_data.impulse_intent(),
-                                    )]),
-                                    timestamp: 0.0,
-                                    index: self.lobby.game.turns_count(),
-                                }),
-                            );
-                        }
+        } else if pointer.clicked() {
+            if let Some(bug_index) = self.selected_bug_index {
+                if let Some((_rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
+                    if let LobbySort::Online(lobby_id) = self.lobby.settings.sort() {
+                        send_message(
+                            *lobby_id,
+                            app_context.session_id.clone().unwrap(),
+                            Message::Move(Turn {
+                                impulse_intents: HashMap::from([(
+                                    bug_index,
+                                    *bug_data.impulse_intent(),
+                                )]),
+                                timestamp: 0.0,
+                                index: self.lobby.game.turns_count(),
+                            }),
+                        );
                     }
                 }
-
-                self.selected_bug_index = None;
             }
+
+            self.selected_bug_index = None;
         }
 
         // if pointer.alt_clicked() {

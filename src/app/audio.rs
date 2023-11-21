@@ -1,10 +1,10 @@
-use crate::RESOURCE_BASE_URL;
-use js_sys::{ArrayBuffer, Math, Promise, Uint8Array};
+
+use js_sys::{ArrayBuffer, Math, Uint8Array};
 use std::collections::HashMap;
-use wasm_bindgen::{JsCast, JsValue};
-use wasm_bindgen_futures::JsFuture;
+use wasm_bindgen::{JsCast};
+
 use web_sys::{
-    console, AudioBuffer, AudioBufferSourceNode, AudioContext, AudioNode, HtmlAudioElement,
+    AudioBuffer, AudioContext,
 };
 
 #[derive(PartialEq, Eq, Hash, Clone, Debug)]
@@ -264,17 +264,17 @@ impl AudioSystem {
 
 impl Default for AudioSystem {
     fn default() -> Self {
-        let mut audio_system = Self {
+        
+
+        Self {
             context: AudioContext::new().unwrap(),
             audio_clips: Default::default(),
-        };
-
-        audio_system
+        }
     }
 }
 
 fn u8_slice_to_array_buffer(u8_slice: &[u8]) -> ArrayBuffer {
     let uint8_array = Uint8Array::new_with_length(u8_slice.len() as u32);
     uint8_array.set(&Uint8Array::from(u8_slice), 0);
-    ArrayBuffer::from(uint8_array.buffer())
+    uint8_array.buffer()
 }
