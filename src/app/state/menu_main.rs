@@ -32,7 +32,7 @@ const BUTTON_PAGE_PREVIOUS: usize = 10;
 const BUTTON_PAGE_NEXT: usize = 11;
 const BUTTON_ARENA: usize = 20;
 
-const LOBBY_PAGE_SIZE: usize = 4;
+const LOBBY_PAGE_SIZE: usize = 6;
 
 impl State for MainMenuState {
     fn draw(
@@ -60,7 +60,7 @@ impl State for MainMenuState {
             context,
             atlas,
             (384.0) / 2.0,
-            256.0 - 20.0,
+            360.0 - 20.0,
             format!("{}", self.lobby_page + 1).as_str(),
         )?;
 
@@ -256,7 +256,7 @@ impl State for MainMenuState {
 impl Default for MainMenuState {
     fn default() -> Self {
         let button_new_lobby = ButtonElement::new(
-            (8, 256 - 32),
+            (8, 360 - 32),
             (112, 24),
             BUTTON_ARENA,
             LabelTrim::Glorious,
@@ -265,7 +265,7 @@ impl Default for MainMenuState {
         );
 
         let button_join_private: ButtonElement = ButtonElement::new(
-            (384 - 120, 256 - 32),
+            (384 - 120, 360 - 32),
             (112, 24),
             BUTTON_ARENA,
             LabelTrim::Glorious,
@@ -274,7 +274,7 @@ impl Default for MainMenuState {
         );
 
         let button_page_previous: ButtonElement = ButtonElement::new(
-            ((384 - 64) / 2, 256 - 28),
+            ((384 - 64) / 2, 360 - 28),
             (20, 16),
             BUTTON_PAGE_PREVIOUS,
             LabelTrim::Round,
@@ -283,7 +283,7 @@ impl Default for MainMenuState {
         );
 
         let button_page_next: ButtonElement = ButtonElement::new(
-            ((384 - 64) / 2 + 44, 256 - 28),
+            ((384 - 64) / 2 + 44, 360 - 28),
             (20, 16),
             BUTTON_PAGE_NEXT,
             LabelTrim::Round,
@@ -293,7 +293,7 @@ impl Default for MainMenuState {
 
         let interface = Interface::new(vec![
             button_new_lobby.boxed(),
-            button_join_private.boxed(),
+            // button_join_private.boxed(),
             button_page_previous.boxed(),
             button_page_next.boxed(),
         ]);

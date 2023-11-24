@@ -1,7 +1,6 @@
-use std::{cell::RefCell, collections::HashMap, rc::Rc};
+use std::{cell::RefCell, collections::HashMap, f32::consts::TAU, f64::consts::PI, rc::Rc};
 
-
-
+use js_sys::Math;
 use nalgebra::vector;
 use rapier2d::prelude::point;
 use shared::{Lobby, LobbySettings, LobbySort, Message, Team, Turn};
@@ -12,11 +11,11 @@ use super::State;
 use crate::{
     app::{
         Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme,
-        LabelTrim, ParticleSystem, StateSort, ToggleButtonElement, UIElement,
+        LabelTrim, Particle, ParticleSystem, StateSort, ToggleButtonElement, UIElement,
     },
     draw::{
-        draw_bug, draw_bug_impulse, draw_image_centered, draw_label, draw_sand_circle,
-        draw_text, local_to_screen, screen_to_local,
+        draw_bug, draw_bug_impulse, draw_image_centered, draw_label, draw_sand_circle, draw_text,
+        local_to_screen, screen_to_local, draw_prop,
     },
     net::{create_new_lobby, fetch, request_turns_since, send_message, send_ready, MessagePool},
     tuple_as,
@@ -118,7 +117,10 @@ impl GameState {
 
     pub fn team_for(&self, session_id: &Option<String>) -> Option<Team> {
         if let Some(session_id) = session_id {
-            self.lobby.players().get(session_id).map(|player| player.team)
+            self.lobby
+                .players()
+                .get(session_id)
+                .map(|player| player.team)
         } else {
             None
         }
@@ -145,11 +147,6 @@ impl State for GameState {
 
         let point = tuple_as!(screen_to_local(tuple_as!(pointer.location, f64)), f32);
         let point = point![point.0, point.1];
-
-        let length = 7.0 * 24.0
-            - ((self.lobby.game.ticks() % (7 * 60)) as f64 / 60.0 * 24.0)
-                .floor()
-                .clamp(0.0, 7.0 * 24.0);
 
         draw_image_centered(
             context,
@@ -182,74 +179,101 @@ impl State for GameState {
             360.0 / 2.0,
         )?;
 
-        draw_label(
-            context,
-            atlas,
-            ((384 - 7 * 24) / 2, 8),
-            (7 * 24, 8),
-            "#002a2a",
-            &crate::app::ContentElement::None,
-            pointer,
-            frame,
-            &LabelTrim::Round,
-            false,
-        )?;
+        {
+            let length = 7.0 * 24.0
+                - ((self.lobby.game.turn_ticks()) as f64 / 60.0 * 24.0)
+                    .floor()
+                    .clamp(0.0, 7.0 * 24.0);
 
-        draw_label(
-            context,
-            atlas,
-            ((384 - (length as i32 / 2) * 2) / 2, 8),
-            ((length as i32 / 2) * 2, 8),
-            "#fff",
-            &crate::app::ContentElement::None,
-            pointer,
-            frame,
-            &LabelTrim::Round,
-            false,
-        )?;
+            draw_label(
+                context,
+                atlas,
+                ((384 - 7 * 24) / 2, 8),
+                (7 * 24, 8),
+                "#002a2a",
+                &crate::app::ContentElement::None,
+                pointer,
+                frame,
+                &LabelTrim::Round,
+                false,
+            )?;
 
-        let capture_progress = self.animated_capture_progress;
-        let length = (capture_progress * 7.0 * 12.0)
-            .abs()
-            .floor()
-            .clamp(0.0, 7.0 * 12.0);
-        let length = (length as i32 / 2) * 2;
+            draw_label(
+                context,
+                atlas,
+                ((384 - (length as i32 / 2) * 2) / 2, 8),
+                ((length as i32 / 2) * 2, 8),
+                "#CA891B",
+                &crate::app::ContentElement::None,
+                pointer,
+                frame,
+                &LabelTrim::Round,
+                false,
+            )?;
 
-        draw_label(
-            context,
-            atlas,
-            ((384 - 7 * 24) / 2, 360 - 16),
-            (7 * 24, 8),
-            "#002a2a",
-            &crate::app::ContentElement::None,
-            pointer,
-            frame,
-            &LabelTrim::Round,
-            false,
-        )?;
+            draw_label(
+                context,
+                atlas,
+                ((384 - (7 * 12).min((length as i32 / 2) * 2)) / 2, 8),
+                ((7 * 12).min((length as i32 / 2) * 2), 8),
+                "#fff",
+                &crate::app::ContentElement::None,
+                pointer,
+                frame,
+                &LabelTrim::Round,
+                false,
+            )?;
+        }
 
-        draw_label(
-            context,
-            atlas,
-            ((384 / 2) + length.min(0), 360 - 16),
-            (length, 8),
-            if capture_progress > 0.0 {
-                "#C20005"
-            } else {
-                "#00C2BD"
-            },
-            &crate::app::ContentElement::None,
-            pointer,
-            frame,
-            &LabelTrim::Round,
-            false,
-        )?;
+        {
+            let capture_progress = self.animated_capture_progress;
+            let length = (capture_progress * 7.0 * 12.0)
+                .abs()
+                .floor()
+                .clamp(0.0, 7.0 * 12.0);
+            let length = (length as i32 / 2) * 2;
+
+            draw_label(
+                context,
+                atlas,
+                ((384 - 7 * 24) / 2, 360 - 16),
+                (7 * 24, 8),
+                "#002a2a",
+                &crate::app::ContentElement::None,
+                pointer,
+                frame,
+                &LabelTrim::Round,
+                false,
+            )?;
+
+            draw_label(
+                context,
+                atlas,
+                ((384 / 2) + length.min(0), 360 - 16),
+                (length, 8),
+                if capture_progress > 0.0 {
+                    "#C20005"
+                } else {
+                    "#00C2BD"
+                },
+                &crate::app::ContentElement::None,
+                pointer,
+                frame,
+                &LabelTrim::Round,
+                false,
+            )?;
+        }
 
         if let Some((_, rigid_body, _bug_data)) = self.lobby.game.intersecting_bug(point) {
             let (dx, dy) = local_to_screen(rigid_body.translation());
 
             draw_image_centered(context, atlas, 0.0, 176.0, 32.0, 32.0, dx, dy)?;
         }
+
+        for (index, prop) in self.lobby.game.iter_props().enumerate() {
+            draw_prop(context, atlas, prop, index, frame)?;
+        }
+
 
         for (index, bug) in self.lobby.game.iter_bugs().enumerate() {
             draw_bug(context, atlas, bug, index, frame)?;
@@ -281,7 +305,13 @@ impl State for GameState {
                 draw_image_centered(context, atlas, 0.0, 176.0, 32.0, 32.0, dx, dy)?;
             }
         }
-
+        {
+            context.save();
+            context.translate(384.0 / 2.0, 360.0 / 2.0)?;
+            self.particle_system()
+                .tick_and_draw(context, atlas, frame)?;
+            context.restore();
+        }
         // draw_text(
         //     context,
         //     atlas,
@@ -362,6 +392,24 @@ impl State for GameState {
         // }
 
         // console::log_1(&format!("{:?}", self.lobby.game.get_bug(0)).into());
+
+        if self.lobby.game.turn_ticks() == self.lobby.game.turn_tick_count_half() + 4 {
+            self.particle_system().spawn(100, |_| {
+                let round = std::f64::consts::TAU * Math::random();
+                let x = round.cos() * 4.0 * 16.0;
+                let y = round.sin() * 4.0 * 16.0;
+
+                Particle::new(
+                    (x, y),
+                    (
+                        (Math::random()) * round.cos() * 7.0,
+                        (Math::random()) * round.sin() * 7.0,
+                    ),
+                    20 + (Math::random() * 40.0) as usize,
+                    crate::app::ParticleSort::Missile,
+                )
+            });
+        }
 
         Ok(())
     }

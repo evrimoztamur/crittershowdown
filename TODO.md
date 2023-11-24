@@ -42,6 +42,9 @@
 
 ## DONE
 
+- Props
+  - Obstacle bouncy mushrooms
+
 - Mechanics
   - King of the Hill (KotH)
     - Draw circle in capture zone

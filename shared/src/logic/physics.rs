@@ -45,6 +45,17 @@ impl Physics {
 
         ball_body_handle
     }
+    /// Inserts a new [`RigidBody`] for a [`Bug`].
+    pub fn insert_prop(&mut self, translation: Vector2<f32>, index: usize) -> ColliderHandle {
+        let collider = ColliderBuilder::ball(0.5)
+            .restitution(0.7)
+            .user_data(index as u128)
+            .translation(translation)
+            .build();
+        let ball_body_handle = self.collider_set.insert(collider);
+
+        ball_body_handle
+    }
 
     /// TODO docs
     pub fn tick(&mut self) {

@@ -1,6 +1,6 @@
 use nalgebra::Vector2;
-use rapier2d::dynamics::RigidBody;
-use shared::BugData;
+use rapier2d::{dynamics::RigidBody, geometry::Collider};
+use shared::{BugData, PropData};
 use wasm_bindgen::{Clamped, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, ImageData};
 
@@ -107,6 +107,35 @@ pub fn draw_bugdata(
         0.0,
         0.0,
     )?;
+
+    Ok(())
+}
+
+pub fn draw_prop(
+    context: &CanvasRenderingContext2d,
+    atlas: &HtmlCanvasElement,
+    (collider, prop_data): (&Collider, &PropData),
+    index: usize,
+    frame: usize,
+) -> Result<(), JsValue> {
+    let (dx, dy) = local_to_screen(collider.translation());
+
+    context.save();
+    context.translate(dx.round(), dy.round())?;
+    draw_propdata(context, atlas, prop_data, index, frame)?;
+    context.restore();
+
+    Ok(())
+}
+
+pub fn draw_propdata(
+    context: &CanvasRenderingContext2d,
+    atlas: &HtmlCanvasElement,
+    _prop_data: &PropData,
+    index: usize,
+    frame: usize,
+) -> Result<(), JsValue> {
+    draw_image_centered(context, atlas, 0.0, 144.0, 16.0, 16.0, 0.0, 0.0)?;
 
     Ok(())
 }
@@ -250,7 +279,8 @@ pub fn draw_particle(
     let cycle = frame
         + (particle.position.0 * 16.0) as usize
         + (particle.position.1 * 16.0) as usize
-        + spin;
+        + spin
+        + particle.index;
 
     context.rotate((spin / 5) as f64 * std::f64::consts::PI / 2.0)?;
     // context.rotate(frame as f64 * 0.1)?;
@@ -276,7 +306,7 @@ pub fn draw_particle(
                 ParticleSort::Beam => 120.0,
             }
         },
-        56.0,
+        248.0,
         8.0,
         8.0,
         -4.0,

@@ -1,10 +1,15 @@
-use std::collections::{HashMap, VecDeque};
+use std::{
+    collections::{HashMap, VecDeque},
+    f64::consts::{PI, TAU},
+};
 
 use nalgebra::{vector, Point2, Vector2};
-use rapier2d::dynamics::{RigidBody, RigidBodyHandle};
+use rapier2d::{
+    dynamics::{RigidBody, RigidBodyHandle},
+    geometry::{Collider, ColliderHandle},
+};
 
-
-use crate::{BugData, Message, Physics, Player, Result, Team, Turn};
+use crate::{BugData, Message, Physics, Player, PropData, Result, Team, Turn};
 
 /// Game structure.
 #[derive(Clone)]
@@ -12,6 +17,7 @@ pub struct Game {
     physics: Physics,
     bugs: HashMap<usize, BugData>,
     bug_handles: HashMap<usize, RigidBodyHandle>,
+    props: HashMap<usize, PropData>,
     ticks: u64,
     turns: Vec<Turn>,
     queued_turns: VecDeque<Turn>,
@@ -25,6 +31,7 @@ impl Default for Game {
             physics: Physics::default(),
             bugs: HashMap::new(),
             bug_handles: HashMap::new(),
+            props: HashMap::new(),
             turns: Vec::new(),
             queued_turns: VecDeque::new(),
             ticks: 0,
@@ -51,11 +58,19 @@ impl Default for Game {
 
             game.insert_bug(
                 vector![
-                    0.0 + (net_offset).cos() * 5.0,
-                    0.0 + (net_offset).sin() * 5.0
+                    0.0 + (net_offset).cos() * 8.0,
+                    0.0 + (net_offset).sin() * 8.0
                 ],
                 BugData::new(crate::BugSort::WaterBeetle, team),
             );
+        }
+
+        for i in 0..24 {
+            let offset = i;
+            let arc_size = TAU / 16 as f64;
+            let arc: f32 = arc_size as f32 * offset as f32;
+
+            game.insert_prop(vector![0.0 + (arc * 1.0).cos() * 10.0, 0.0 + (arc * 6.0).sin() * 10.0]);
         }
 
         game
@@ -125,7 +140,8 @@ impl Game {
         }
     }
 
-    fn turn_ticks(&self) -> u64 {
+    /// num turn ticks
+    pub fn turn_ticks(&self) -> u64 {
         self.ticks % self.turn_tick_count()
     }
 
@@ -133,8 +149,14 @@ impl Game {
         7
     }
 
+    /// num turn turn_tick_count
     fn turn_tick_count(&self) -> u64 {
         self.turn_duration() * 60
+    }
+
+    /// num turn turn_tick_count
+    pub fn turn_tick_count_half(&self) -> u64 {
+        self.turn_duration() * 30
     }
 
     // /// target tick
@@ -249,6 +271,40 @@ impl Game {
                     .get(&(rigid_body.user_data as usize))
                     .and_then(|data| Some((rigid_body, data)))
             })
+    }
+
+    /// Returns an iterator over all active [`Bugs`].
+    pub fn iter_props(&self) -> impl Iterator<Item = (&Collider, &PropData)> {
+        self.physics
+            .collider_set
+            .iter()
+            .filter_map(|(_collider_handle, collider)| {
+                self.props
+                    .get(&(collider.user_data as usize))
+                    .and_then(|data| Some((collider, data)))
+            })
+    }
+
+    /// Returns an iterator over all active [`Bugs`].
+    pub fn iter_propmuts(&mut self) -> impl Iterator<Item = (&mut Collider, &PropData)> {
+        self.physics
+            .collider_set
+            .iter_mut()
+            .filter_map(|(_collider_handle, collider)| {
+                self.props
+                    .get(&(collider.user_data as usize))
+                    .and_then(|data| Some((collider, data)))
+            })
+    }
+
+    /// Inserts a new [`Bug`].
+    pub fn insert_prop(&mut self, translation: Vector2<f32>) -> (usize, ColliderHandle) {
+        let prop_index = self.props.len() + 0xff;
+        let collider_handle = self.physics.insert_prop(translation, prop_index);
+
+        self.props.insert(prop_index, PropData {});
+
+        (prop_index, collider_handle)
     }
 
     /// Inserts a new [`Bug`].
