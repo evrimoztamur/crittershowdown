@@ -1,12 +1,6 @@
 # TODO
 
 - Mechanics
-
-  - Collision events
-    - Capture collision events
-    - Turn collision events into `Collision(bug_index, bug_index)`
-    - Process collision events per turn
-
   - Classes
     - Incorporate bug classes
     - Set physics properties based on class
@@ -16,10 +10,7 @@
     - Collision events per class
 
   - Health
-    - Add bug health that's different per class
-    - Regenerate 1 health at turn end
-    - Take off X health on collision
-    - Disconnect bugs from the game after they pass
+    - Stun bugs for a turn if they're 0 health
       - Draw them flipped over?
 
   - Game settings
@@ -46,6 +37,16 @@
   - Obstacle bouncy mushrooms
 
 - Mechanics
+  - Health
+    - Add bug health that's different per class
+    - Regenerate 1 health at turn end
+    - Take off X health on collision
+
+  - Collision events
+    - Capture collision events
+    - Turn collision events into `Collision(bug_index, bug_index)`
+    - Process collision events per turn
+
   - King of the Hill (KotH)
     - Draw circle in capture zone
     - Count bugs in zone

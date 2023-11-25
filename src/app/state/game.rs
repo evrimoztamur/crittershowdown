@@ -411,7 +411,7 @@ impl State for GameState {
             });
         }
 
-        for ((a, b), data) in self.lobby.game.bug_collisions() {
+        for ((a, b), data) in self.lobby.game.bug_impacts() {
             self.particle_system().spawn(10, |_| {
                 let round = std::f64::consts::TAU * Math::random();
                 let x = data.x as f64 * 16.0;
@@ -485,32 +485,7 @@ impl State for GameState {
             }
         }
 
-        if let Some((rigid_body_handle, _rigid_body, bug_data)) =
-            self.lobby.game.intersecting_bug_mut(point)
-        {
-            if pointer.clicked() && Some(*bug_data.team()) == my_team {
-                if let Some(bug_index) = self.selected_bug_index {
-                    if let Some((_rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
-                        if let LobbySort::Online(lobby_id) = self.lobby.settings.sort() {
-                            send_message(
-                                *lobby_id,
-                                app_context.session_id.clone().unwrap(),
-                                Message::Move(Turn {
-                                    impulse_intents: HashMap::from([(
-                                        bug_index,
-                                        *bug_data.impulse_intent(),
-                                    )]),
-                                    timestamp: 0.0,
-                                    index: self.lobby.game.turns_count(),
-                                }),
-                            );
-                        }
-                    }
-                }
-
-                self.selected_bug_index = Some(rigid_body_handle);
-            }
-        } else if pointer.clicked() {
+        if pointer.clicked() {
             if let Some(bug_index) = self.selected_bug_index {
                 if let Some((_rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
                     if let LobbySort::Online(lobby_id) = self.lobby.settings.sort() {
@@ -530,7 +505,17 @@ impl State for GameState {
                 }
             }
 
-            self.selected_bug_index = None;
+            if let Some((rigid_body_handle, _rigid_body, bug_data)) =
+                self.lobby.game.intersecting_bug_mut(point)
+            {
+                if Some(*bug_data.team()) == my_team {
+                    self.selected_bug_index = Some(rigid_body_handle);
+                } else {
+                    self.selected_bug_index = None
+                }
+            } else {
+                self.selected_bug_index = None;
+            }
         }
 
         // if pointer.alt_clicked() {

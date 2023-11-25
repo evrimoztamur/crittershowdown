@@ -24,6 +24,7 @@ pub struct Game {
     capture_radius: f32,
     capture_progress: i32,
     bug_collisions: Vec<((u128, u128), Point2<f32>)>,
+    bug_impacts: Vec<((u128, u128), Point2<f32>)>,
 }
 
 impl Default for Game {
@@ -39,6 +40,7 @@ impl Default for Game {
             capture_radius: 4.0,
             capture_progress: 0,
             bug_collisions: Vec::new(),
+            bug_impacts: Vec::new(),
         };
 
         let team_size = 6;
@@ -196,9 +198,9 @@ impl Game {
 
         self.bug_collisions = self.physics.bug_collisions();
 
-        let mut impacts = Vec::new();
+        self.bug_impacts = Vec::new();
 
-        for ((a, b), data) in self.bug_collisions.clone() {
+        for ((a, b), position) in self.bug_collisions.clone() {
             let (rb_a, bug_a) = self.get_bug(a as usize).unwrap();
             let (rb_b, bug_b) = self.get_bug(b as usize).unwrap();
 
@@ -206,14 +208,14 @@ impl Game {
 
             if max_linvel > 0.1 && bug_a.team() != bug_b.team() {
                 if rb_a.linvel().magnitude() > rb_b.linvel().magnitude() {
-                    impacts.push((a, b));
+                    self.bug_impacts.push(((a, b), position));
                 } else {
-                    impacts.push((b, a));
+                    self.bug_impacts.push(((a, b), position));
                 }
             }
         }
 
-        for (a, b) in impacts {
+        for ((a, b), position) in self.bug_impacts.clone() {
             let (rb_a, bug_a) = self.get_bug_mut(a as usize).unwrap();
             bug_a.add_health(-1);
 
@@ -223,8 +225,13 @@ impl Game {
     }
 
     /// bug collisions
-    pub fn bug_collisions(&self) -> Vec<((u128, u128), Point2<f32>)> {
+     fn bug_collisions(&self) -> Vec<((u128, u128), Point2<f32>)> {
         self.bug_collisions.clone()
+    }
+    
+    /// bug impacts
+    pub fn bug_impacts(&self) -> Vec<((u128, u128), Point2<f32>)> {
+        self.bug_impacts.clone()
     }
 
     /// Find the [`Bug`] that's the closest to the given [`Point2`].
