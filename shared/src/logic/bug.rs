@@ -1,5 +1,4 @@
 use nalgebra::{vector, Vector2};
-
 use serde::{Deserialize, Serialize};
 
 use crate::Team;
@@ -13,6 +12,14 @@ pub enum BugSort {
     /// A fire beetle
     FireBeetle,
 }
+impl BugSort {
+    fn max_health(&self) -> usize {
+        match self {
+            BugSort::WaterBeetle => 3,
+            BugSort::FireBeetle => 3,
+        }
+    }
+}
 
 /// A bug
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Default)]
@@ -20,6 +27,7 @@ pub struct BugData {
     sort: BugSort,
     team: Team,
     impulse_intent: Vector2<f32>,
+    health: usize,
 }
 
 impl BugData {
@@ -29,6 +37,7 @@ impl BugData {
             sort,
             team,
             impulse_intent: Vector2::zeros(),
+            health: sort.max_health(),
         }
     }
     /// Returns the [`BugSort`] for this [`Bug`].
@@ -55,6 +64,16 @@ impl BugData {
         } else {
             vector![0.0, 0.0]
         };
+    }
+
+    /// helath
+    pub fn health(&self) -> usize {
+        self.health
+    }
+
+    /// set health
+    pub fn add_health(&mut self, delta: isize) {
+        self.health = (self.health as isize + delta).clamp(0, self.sort.max_health() as isize) as usize;
     }
 
     /// TODO docs

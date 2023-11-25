@@ -1,10 +1,11 @@
-use nalgebra::{vector, Point2, Vector2};
+use itertools::Itertools;
+use nalgebra::{vector, Point, Point2, Vector2};
 use rapier2d::{
     dynamics::{
         CCDSolver, ImpulseJointSet, IntegrationParameters, IslandManager, MultibodyJointSet,
         RigidBodyBuilder, RigidBodyHandle, RigidBodySet,
     },
-    geometry::{BroadPhase, ColliderBuilder, ColliderSet, NarrowPhase},
+    geometry::{BroadPhase, ColliderBuilder, ColliderSet, ContactData, NarrowPhase},
     pipeline::PhysicsPipeline,
     prelude::{ColliderHandle, PointProjection, QueryFilter, QueryPipeline},
 };
@@ -37,7 +38,11 @@ impl Physics {
             .user_data(index as u128)
             .build();
 
-        let collider = ColliderBuilder::ball(0.5).restitution(0.7).build();
+        let collider = ColliderBuilder::ball(0.5)
+            .restitution(0.7)
+            .user_data(index as u128)
+            .build();
+        
         let ball_body_handle = self.rigid_body_set.insert(rigid_body);
 
         self.collider_set
@@ -100,6 +105,33 @@ impl Physics {
                     None
                 }
             })
+    }
+
+    /// Returns the contact pairs for all bug colliders
+    pub fn bug_collisions(&self) -> Vec<((u128, u128), Point2<f32>)> {
+        let bug_colliders: Vec<_> = self
+            .collider_set
+            .iter()
+            .filter(|(_, collider)| (0x01..=0xff).contains(&collider.user_data))
+            .collect();
+
+        let mut contacts = Vec::new();
+
+        for ((ch_a, c_a), (ch_b, c_b)) in bug_colliders.iter().tuple_combinations() {
+            if let Some(contact_pair) = self.narrow_phase.contact_pair(*ch_a, *ch_b) {
+                if contact_pair.has_any_active_contact {
+                    if let Some((contact_manifold, tracked_contact)) =
+                        contact_pair.find_deepest_contact()
+                    {
+                        for solver_contact in &contact_manifold.data.solver_contacts {
+                            contacts.push(((c_a.user_data, c_b.user_data), solver_contact.point));
+                        }
+                    }
+                }
+            }
+        }
+
+        contacts
     }
 }
 

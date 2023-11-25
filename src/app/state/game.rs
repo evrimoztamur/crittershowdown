@@ -14,8 +14,8 @@ use crate::{
         LabelTrim, Particle, ParticleSystem, StateSort, ToggleButtonElement, UIElement,
     },
     draw::{
-        draw_bug, draw_bug_impulse, draw_image_centered, draw_label, draw_sand_circle, draw_text,
-        local_to_screen, screen_to_local, draw_prop,
+        draw_bug, draw_bug_impulse, draw_image_centered, draw_label, draw_prop, draw_sand_circle,
+        draw_text, local_to_screen, screen_to_local,
     },
     net::{create_new_lobby, fetch, request_turns_since, send_message, send_ready, MessagePool},
     tuple_as,
@@ -264,6 +264,14 @@ impl State for GameState {
             )?;
         }
 
+        {
+            context.save();
+            context.translate(384.0 / 2.0, 360.0 / 2.0)?;
+            self.particle_system()
+                .tick_and_draw(context, atlas, frame)?;
+            context.restore();
+        }
+
         if let Some((_, rigid_body, _bug_data)) = self.lobby.game.intersecting_bug(point) {
             let (dx, dy) = local_to_screen(rigid_body.translation());
 
@@ -273,7 +281,6 @@ impl State for GameState {
         for (index, prop) in self.lobby.game.iter_props().enumerate() {
             draw_prop(context, atlas, prop, index, frame)?;
         }
-
 
         for (index, bug) in self.lobby.game.iter_bugs().enumerate() {
             draw_bug(context, atlas, bug, index, frame)?;
@@ -305,13 +312,6 @@ impl State for GameState {
                 draw_image_centered(context, atlas, 0.0, 176.0, 32.0, 32.0, dx, dy)?;
             }
         }
-        {
-            context.save();
-            context.translate(384.0 / 2.0, 360.0 / 2.0)?;
-            self.particle_system()
-                .tick_and_draw(context, atlas, frame)?;
-            context.restore();
-        }
         // draw_text(
         //     context,
         //     atlas,
@@ -334,13 +334,13 @@ impl State for GameState {
         //     )
         //     .as_str(),
         // )?;
-        draw_text(
-            context,
-            atlas,
-            8.0,
-            16.0,
-            format!("{:?}", self.lobby.game.ticks()).as_str(),
-        )?;
+        // draw_text(
+        //     context,
+        //     atlas,
+        //     8.0,
+        //     16.0,
+        //     format!("{:?}", self.lobby.game.ticks()).as_str(),
+        // )?;
         // draw_text(
         //     context,
         //     atlas,
@@ -359,20 +359,20 @@ impl State for GameState {
         //     )
         //     .as_str(),
         // )?;
-        draw_text(
-            context,
-            atlas,
-            8.0,
-            32.0,
-            format!("{:?}", self.lobby.game.turns_count()).as_str(),
-        )?;
-        draw_text(
-            context,
-            atlas,
-            8.0,
-            48.0,
-            format!("{:?}", self.lobby.game.all_turns_count()).as_str(),
-        )?;
+        // draw_text(
+        //     context,
+        //     atlas,
+        //     8.0,
+        //     32.0,
+        //     format!("{:?}", self.lobby.game.turns_count()).as_str(),
+        // )?;
+        // draw_text(
+        //     context,
+        //     atlas,
+        //     8.0,
+        //     48.0,
+        //     format!("{:?}", self.lobby.game.all_turns_count()).as_str(),
+        // )?;
 
         // if let Some(turn) = self.lobby.game.last_turn() {
         //     for (i, (bug, intent)) in turn
@@ -406,6 +406,24 @@ impl State for GameState {
                         (Math::random()) * round.sin() * 7.0,
                     ),
                     20 + (Math::random() * 40.0) as usize,
+                    crate::app::ParticleSort::Missile,
+                )
+            });
+        }
+
+        for ((a, b), data) in self.lobby.game.bug_collisions() {
+            self.particle_system().spawn(10, |_| {
+                let round = std::f64::consts::TAU * Math::random();
+                let x = data.x as f64 * 16.0;
+                let y = data.y as f64 * 16.0;
+
+                Particle::new(
+                    (x, y),
+                    (
+                        (Math::random()) * round.cos() * 5.0,
+                        (Math::random()) * round.sin() * 5.0,
+                    ),
+                    20 + (Math::random() * 10.0) as usize,
                     crate::app::ParticleSort::Missile,
                 )
             });

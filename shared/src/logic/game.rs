@@ -6,7 +6,7 @@ use std::{
 use nalgebra::{vector, Point2, Vector2};
 use rapier2d::{
     dynamics::{RigidBody, RigidBodyHandle},
-    geometry::{Collider, ColliderHandle},
+    geometry::{Collider, ColliderHandle, ContactData},
 };
 
 use crate::{BugData, Message, Physics, Player, PropData, Result, Team, Turn};
@@ -23,6 +23,7 @@ pub struct Game {
     queued_turns: VecDeque<Turn>,
     capture_radius: f32,
     capture_progress: i32,
+    bug_collisions: Vec<((u128, u128), Point2<f32>)>,
 }
 
 impl Default for Game {
@@ -37,6 +38,7 @@ impl Default for Game {
             ticks: 0,
             capture_radius: 4.0,
             capture_progress: 0,
+            bug_collisions: Vec::new(),
         };
 
         let team_size = 6;
@@ -70,7 +72,10 @@ impl Default for Game {
             let arc_size = TAU / 16 as f64;
             let arc: f32 = arc_size as f32 * offset as f32;
 
-            game.insert_prop(vector![0.0 + (arc * 1.0).cos() * 10.0, 0.0 + (arc * 6.0).sin() * 10.0]);
+            game.insert_prop(vector![
+                0.0 + (arc * 1.0).cos() * 10.0,
+                0.0 + (arc * 6.0).sin() * 10.0
+            ]);
         }
 
         game
@@ -178,13 +183,48 @@ impl Game {
             }
         }
 
+        for (_, bug_data) in self.bugs.iter_mut() {
+            bug_data.add_health(1);
+        }
+
         self.capture_progress += tip;
     }
 
     /// force a subtick
-    ///
     pub fn tick_physics(&mut self) {
         self.physics.tick();
+
+        self.bug_collisions = self.physics.bug_collisions();
+
+        let mut impacts = Vec::new();
+
+        for ((a, b), data) in self.bug_collisions.clone() {
+            let (rb_a, bug_a) = self.get_bug(a as usize).unwrap();
+            let (rb_b, bug_b) = self.get_bug(b as usize).unwrap();
+
+            let max_linvel = rb_a.linvel().magnitude().max(rb_b.linvel().magnitude());
+
+            if max_linvel > 0.1 && bug_a.team() != bug_b.team() {
+                if rb_a.linvel().magnitude() > rb_b.linvel().magnitude() {
+                    impacts.push((a, b));
+                } else {
+                    impacts.push((b, a));
+                }
+            }
+        }
+
+        for (a, b) in impacts {
+            let (rb_a, bug_a) = self.get_bug_mut(a as usize).unwrap();
+            bug_a.add_health(-1);
+
+            let (rb_b, bug_b) = self.get_bug_mut(b as usize).unwrap();
+            bug_b.add_health(-1);
+        }
+    }
+
+    /// bug collisions
+    pub fn bug_collisions(&self) -> Vec<((u128, u128), Point2<f32>)> {
+        self.bug_collisions.clone()
     }
 
     /// Find the [`Bug`] that's the closest to the given [`Point2`].
@@ -313,7 +353,7 @@ impl Game {
         translation: Vector2<f32>,
         bug_data: BugData,
     ) -> (usize, RigidBodyHandle) {
-        let bug_index = self.bugs.len();
+        let bug_index = self.bugs.len() + 0x01;
         let rigid_body_handle = self.physics.insert_bug(translation, bug_index);
 
         self.bugs.insert(bug_index, bug_data);

@@ -93,7 +93,7 @@ pub fn draw_bug(
 pub fn draw_bugdata(
     context: &CanvasRenderingContext2d,
     atlas: &HtmlCanvasElement,
-    _bug_data: &BugData,
+    bug_data: &BugData,
     index: usize,
     frame: usize,
 ) -> Result<(), JsValue> {
@@ -107,6 +107,33 @@ pub fn draw_bugdata(
         0.0,
         0.0,
     )?;
+
+    if bug_data.health() > 0 {
+        let health = (bug_data.health() as f64 - 1.0).max(0.0);
+
+        match bug_data.team() {
+            shared::Team::Red => draw_image_centered(
+                context,
+                atlas,
+                64.0,
+                176.0 + health * 5.0,
+                6.0 + health * 4.0,
+                5.0,
+                0.0,
+                10.0,
+            )?,
+            shared::Team::Blue => draw_image_centered(
+                context,
+                atlas,
+                88.0,
+                176.0 + health * 5.0,
+                6.0 + health * 4.0,
+                5.0,
+                0.0,
+                10.0,
+            )?,
+        }
+    }
 
     Ok(())
 }
