@@ -4,7 +4,7 @@ use nalgebra::Vector2;
 use serde::{Deserialize, Serialize};
 use serde_json_any_key::*;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 /// A turn
 pub struct Turn {
     /// List of impulse intents

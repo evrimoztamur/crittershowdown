@@ -122,9 +122,10 @@ impl Game {
 
         let turn_ticks = self.turn_ticks();
         let turn_tick_count = self.turn_tick_count();
+        let turn_tick_count_half= self.turn_tick_count_half();
 
         if turn_ticks == 0 {
-            // At each 7 second interval, check for queued turns (which are sent from the server
+            // At each N second interval, check for queued turns (which are sent from the server
             if let Some(queued_turn) = self.queued_turns.pop_front() {
                 if self.execute_turn(&queued_turn) {
                     self.tick_physics();
@@ -134,10 +135,10 @@ impl Game {
                 self.ticks -= 1;
             }
             // Do not act until available
-        } else if turn_ticks < turn_tick_count / 2 {
+        } else if turn_ticks < turn_tick_count_half {
             self.tick_physics();
         }
-        if turn_ticks == turn_tick_count / 2 {
+        if turn_ticks == turn_tick_count_half {
             self.tick_turn();
         }
 
@@ -152,18 +153,29 @@ impl Game {
         self.ticks % self.turn_tick_count()
     }
 
-    fn turn_duration(&self) -> u64 {
-        7
+    /// percentage of turn passed
+    pub fn turn_percentage_time(&self) -> f64 {
+        self.turn_ticks() as f64 / self.turn_tick_count() as f64
+    }
+
+    /// Duration of the turn in seconds
+    pub fn turn_duration(&self) -> u64 {
+        10
     }
 
     /// num turn turn_tick_count
-    fn turn_tick_count(&self) -> u64 {
+    pub fn turn_tick_count(&self) -> u64 {
         self.turn_duration() * 60
     }
 
     /// num turn turn_tick_count
     pub fn turn_tick_count_half(&self) -> u64 {
-        self.turn_duration() * 30
+        3 * 60
+    }
+
+    /// num turn turn_tick_count
+    pub fn turn_percentage_time_half(&self) -> f64 {
+        (3 * 60) as f64 / self.turn_tick_count() as f64
     }
 
     // /// target tick
@@ -206,7 +218,7 @@ impl Game {
 
             let max_linvel = rb_a.linvel().magnitude().max(rb_b.linvel().magnitude());
 
-            if max_linvel > 0.1 && bug_a.team() != bug_b.team() {
+            if max_linvel > 2.0 && bug_a.team() != bug_b.team() {
                 if rb_a.linvel().magnitude() > rb_b.linvel().magnitude() {
                     self.bug_impacts.push(((a, b), position));
                 } else {

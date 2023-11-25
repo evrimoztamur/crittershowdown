@@ -1,7 +1,7 @@
 use std::{cell::RefCell, collections::HashMap, f32::consts::TAU, f64::consts::PI, rc::Rc};
 
 use js_sys::Math;
-use nalgebra::vector;
+use nalgebra::{vector, ComplexField};
 use rapier2d::prelude::point;
 use shared::{Lobby, LobbySettings, LobbySort, Message, Team, Turn};
 use wasm_bindgen::{prelude::Closure, JsValue};
@@ -11,7 +11,8 @@ use super::State;
 use crate::{
     app::{
         Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme,
-        LabelTrim, Particle, ParticleSystem, StateSort, ToggleButtonElement, UIElement,
+        LabelTrim, Particle, ParticleSort, ParticleSystem, StateSort, ToggleButtonElement,
+        UIElement,
     },
     draw::{
         draw_bug, draw_bug_impulse, draw_image_centered, draw_label, draw_prop, draw_sand_circle,
@@ -180,16 +181,18 @@ impl State for GameState {
         )?;
 
         {
-            let length = 7.0 * 24.0
-                - ((self.lobby.game.turn_ticks()) as f64 / 60.0 * 24.0)
+            let bar_width = 7 * 24;
+            let length = bar_width as f64
+                - (self.lobby.game.turn_percentage_time() * bar_width as f64)
                     .floor()
-                    .clamp(0.0, 7.0 * 24.0);
+                    .clamp(0.0, bar_width as f64);
+            let label_length = (length as i32 / 2) * 2;
 
             draw_label(
                 context,
                 atlas,
-                ((384 - 7 * 24) / 2, 8),
-                (7 * 24, 8),
+                ((384 - bar_width) / 2, 8),
+                (bar_width, 8),
                 "#002a2a",
                 &crate::app::ContentElement::None,
                 pointer,
@@ -201,8 +204,8 @@ impl State for GameState {
             draw_label(
                 context,
                 atlas,
-                ((384 - (length as i32 / 2) * 2) / 2, 8),
-                ((length as i32 / 2) * 2, 8),
+                ((384 - label_length) / 2, 8),
+                (label_length, 8),
                 "#CA891B",
                 &crate::app::ContentElement::None,
                 pointer,
@@ -211,11 +214,14 @@ impl State for GameState {
                 false,
             )?;
 
+            let simulation_portion_length = (1.0 - self.lobby.game.turn_percentage_time_half()) * bar_width as f64;
+            let simulation_portion_label_length = (simulation_portion_length as i32 / 2) * 2;
+
             draw_label(
                 context,
                 atlas,
-                ((384 - (7 * 12).min((length as i32 / 2) * 2)) / 2, 8),
-                ((7 * 12).min((length as i32 / 2) * 2), 8),
+                ((384 - (simulation_portion_label_length).min(label_length)) / 2, 8),
+                ((simulation_portion_label_length).min(label_length), 8),
                 "#fff",
                 &crate::app::ContentElement::None,
                 pointer,
@@ -312,6 +318,42 @@ impl State for GameState {
                 draw_image_centered(context, atlas, 0.0, 176.0, 32.0, 32.0, dx, dy)?;
             }
         }
+
+        match (self.lobby.game.turn_tick_count() as i64 - self.lobby.game.turn_ticks() as i64) / 60
+        {
+            2 => draw_image_centered(
+                context,
+                atlas,
+                96.0,
+                256.0,
+                48.0,
+                48.0,
+                384.0 / 2.0,
+                360.0 / 2.0,
+            )?,
+            1 => draw_image_centered(
+                context,
+                atlas,
+                48.0,
+                256.0,
+                48.0,
+                48.0,
+                384.0 / 2.0,
+                360.0 / 2.0,
+            )?,
+            0 => draw_image_centered(
+                context,
+                atlas,
+                0.0,
+                256.0,
+                48.0,
+                48.0,
+                384.0 / 2.0,
+                360.0 / 2.0,
+            )?,
+            _ => (),
+        }
+
         // draw_text(
         //     context,
         //     atlas,
@@ -339,7 +381,7 @@ impl State for GameState {
         //     atlas,
         //     8.0,
         //     16.0,
-        //     format!("{:?}", self.lobby.game.ticks()).as_str(),
+        //     format!("{:?}", self.lobby.game.turn_ticks()).as_str(),
         // )?;
         // draw_text(
         //     context,
@@ -393,7 +435,7 @@ impl State for GameState {
 
         // console::log_1(&format!("{:?}", self.lobby.game.get_bug(0)).into());
 
-        if self.lobby.game.turn_ticks() == self.lobby.game.turn_tick_count_half() + 4 {
+        if self.lobby.game.turn_ticks() == self.lobby.game.turn_tick_count_half() {
             self.particle_system().spawn(100, |_| {
                 let round = std::f64::consts::TAU * Math::random();
                 let x = round.cos() * 4.0 * 16.0;
@@ -407,6 +449,40 @@ impl State for GameState {
                     ),
                     20 + (Math::random() * 40.0) as usize,
                     crate::app::ParticleSort::Missile,
+                )
+            });
+        }
+
+        let capture_progress_unsigned_distance =
+            (self.animated_capture_progress - self.lobby.game.capture_progress()).abs() as f64;
+
+        if capture_progress_unsigned_distance > 0.05 {
+            let particle_sort =
+                if self.animated_capture_progress < self.lobby.game.capture_progress() {
+                    ParticleSort::RedWin
+                } else {
+                    ParticleSort::BlueWin
+                };
+
+            self.particle_system().spawn(2 + (capture_progress_unsigned_distance * 6.0).round() as usize, |_| {
+                let round = std::f64::consts::TAU * Math::random();
+                let x = round.cos() * 4.0 * 16.0;
+                let y = round.sin() * 4.0 * 16.0;
+
+                Particle::new(
+                    (x, y),
+                    (
+                        (Math::random())
+                            * round.cos()
+                            * 6.0
+                            * (1.0 + capture_progress_unsigned_distance * 4.0),
+                        (Math::random())
+                            * round.sin()
+                            * 6.0
+                            * (1.0 + capture_progress_unsigned_distance * 4.0),
+                    ),
+                    20 + (Math::random() * 40.0) as usize,
+                    particle_sort,
                 )
             });
         }

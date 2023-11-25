@@ -91,7 +91,7 @@ async fn get_turns_since(
 
             let since_last_beat = timestamp() - last_beat;
 
-            if since_last_beat > 7.0 {
+            if since_last_beat > lobby.game.turn_duration() as f64 {
                 let mut turn = lobby.game.aggregate_turn();
                 turn.timestamp = timestamp();
                 lobby.game.execute_turn(&turn);
@@ -154,7 +154,13 @@ async fn post_ready(
 
     Json(match lobbies.get_mut(&id) {
         Some(lobby) => match lobby.join_player(session_request.session_id, timestamp()) {
-            Ok(_) => Message::Lobby(Box::new(lobby.clone())),
+            Ok(_) => {
+                lobby.game.execute_turn(&Turn {
+                    timestamp: timestamp(),
+                    ..Default::default()
+                });
+                Message::Lobby(Box::new(lobby.clone()))
+            }
             Err(err) => Message::LobbyError(err),
         },
         None => Message::LobbyError(LobbyError("lobby does not exist".to_string())),
