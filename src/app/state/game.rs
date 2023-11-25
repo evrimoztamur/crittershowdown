@@ -7,7 +7,7 @@ use shared::{Lobby, LobbySettings, LobbySort, Message, Team, Turn};
 use wasm_bindgen::{prelude::Closure, JsValue};
 use web_sys::{console, CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
 
-use super::State;
+use super::{MainMenuState, State};
 use crate::{
     app::{
         Alignment, AppContext, ButtonElement, ConfirmButtonElement, Interface, LabelTheme,
@@ -36,6 +36,7 @@ pub struct GameState {
     shake_frame: (u64, usize),
     selected_bug_index: Option<usize>,
     animated_capture_progress: f32,
+    capture_frame: usize,
 }
 
 impl GameState {
@@ -109,6 +110,7 @@ impl GameState {
             shake_frame: (0, 0),
             selected_bug_index: None,
             animated_capture_progress: 0.0,
+            capture_frame: 0,
         }
     }
 
@@ -214,13 +216,17 @@ impl State for GameState {
                 false,
             )?;
 
-            let simulation_portion_length = (1.0 - self.lobby.game.turn_percentage_time_half()) * bar_width as f64;
+            let simulation_portion_length =
+                (1.0 - self.lobby.game.turn_percentage_time_half()) * bar_width as f64;
             let simulation_portion_label_length = (simulation_portion_length as i32 / 2) * 2;
 
             draw_label(
                 context,
                 atlas,
-                ((384 - (simulation_portion_label_length).min(label_length)) / 2, 8),
+                (
+                    (384 - (simulation_portion_label_length).min(label_length)) / 2,
+                    8,
+                ),
                 ((simulation_portion_label_length).min(label_length), 8),
                 "#fff",
                 &crate::app::ContentElement::None,
@@ -456,7 +462,7 @@ impl State for GameState {
         let capture_progress_unsigned_distance =
             (self.animated_capture_progress - self.lobby.game.capture_progress()).abs() as f64;
 
-        if capture_progress_unsigned_distance > 0.05 {
+        if capture_progress_unsigned_distance > 0.05 || self.animated_capture_progress.abs() > 1.0 {
             let particle_sort =
                 if self.animated_capture_progress < self.lobby.game.capture_progress() {
                     ParticleSort::RedWin
@@ -464,27 +470,30 @@ impl State for GameState {
                     ParticleSort::BlueWin
                 };
 
-            self.particle_system().spawn(2 + (capture_progress_unsigned_distance * 6.0).round() as usize, |_| {
-                let round = std::f64::consts::TAU * Math::random();
-                let x = round.cos() * 4.0 * 16.0;
-                let y = round.sin() * 4.0 * 16.0;
+            self.particle_system().spawn(
+                2 + (capture_progress_unsigned_distance * 6.0).round() as usize,
+                |_| {
+                    let round = std::f64::consts::TAU * Math::random();
+                    let x = round.cos() * 4.0 * 16.0;
+                    let y = round.sin() * 4.0 * 16.0;
 
-                Particle::new(
-                    (x, y),
-                    (
-                        (Math::random())
-                            * round.cos()
-                            * 6.0
-                            * (1.0 + capture_progress_unsigned_distance * 4.0),
-                        (Math::random())
-                            * round.sin()
-                            * 6.0
-                            * (1.0 + capture_progress_unsigned_distance * 4.0),
-                    ),
-                    20 + (Math::random() * 40.0) as usize,
-                    particle_sort,
-                )
-            });
+                    Particle::new(
+                        (x, y),
+                        (
+                            (Math::random())
+                                * round.cos()
+                                * 6.0
+                                * (1.0 + capture_progress_unsigned_distance * 4.0),
+                            (Math::random())
+                                * round.sin()
+                                * 6.0
+                                * (1.0 + capture_progress_unsigned_distance * 4.0),
+                        ),
+                        20 + (Math::random() * 40.0) as usize,
+                        particle_sort,
+                    )
+                },
+            );
         }
 
         for ((a, b), data) in self.lobby.game.bug_impacts() {
@@ -552,6 +561,14 @@ impl State for GameState {
             message_pool.block(frame);
         }
 
+        if self.animated_capture_progress.abs() > 1.0 {
+            if self.capture_frame == 0 {
+                self.capture_frame = frame;
+            } else if frame - self.capture_frame > 180 {
+                return Some(StateSort::MainMenu(MainMenuState::default()));
+            }
+        }
+
         if let Some(bug_index) = self.selected_bug_index {
             if let Some((rigid_body, bug_data)) = self.lobby.game.get_bug_mut(bug_index) {
                 if Some(*bug_data.team()) == my_team {
@@ -584,7 +601,7 @@ impl State for GameState {
             if let Some((rigid_body_handle, _rigid_body, bug_data)) =
                 self.lobby.game.intersecting_bug_mut(point)
             {
-                if Some(*bug_data.team()) == my_team {
+                if Some(*bug_data.team()) == my_team && bug_data.health() > 1 {
                     self.selected_bug_index = Some(rigid_body_handle);
                 } else {
                     self.selected_bug_index = None

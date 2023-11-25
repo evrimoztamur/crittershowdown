@@ -15,8 +15,8 @@ pub enum BugSort {
 impl BugSort {
     fn max_health(&self) -> usize {
         match self {
-            BugSort::WaterBeetle => 3,
-            BugSort::FireBeetle => 3,
+            BugSort::WaterBeetle => 4,
+            BugSort::FireBeetle => 4,
         }
     }
 }

@@ -97,19 +97,20 @@ pub fn draw_bugdata(
     index: usize,
     frame: usize,
 ) -> Result<(), JsValue> {
-    draw_image_centered(
-        context,
-        atlas,
-        16.0 * ((index % 2) as f64),
-        16.0 * (((frame / (6 + (index % 3)) + (index % 3)) % 2) as f64),
-        16.0,
-        16.0,
-        0.0,
-        0.0,
-    )?;
 
-    if bug_data.health() > 0 {
-        let health = (bug_data.health() as f64 - 1.0).max(0.0);
+    if bug_data.health() > 1 {
+        draw_image_centered(
+            context,
+            atlas,
+            16.0 * ((index % 2) as f64),
+            16.0 * (((frame / (6 + (index % 3)) + (index % 3)) % 2) as f64),
+            16.0,
+            16.0,
+            0.0,
+            0.0,
+        )?;
+
+        let health = (bug_data.health() as f64 - 2.0).max(0.0);
 
         match bug_data.team() {
             shared::Team::Red => draw_image_centered(
@@ -132,7 +133,22 @@ pub fn draw_bugdata(
                 0.0,
                 10.0,
             )?,
-        }
+        } 
+    }else {
+        context.save();
+        context.scale(1.0, -1.0)?;
+        draw_image_centered(
+            context,
+            atlas,
+            16.0 * ((index % 2) as f64),
+            16.0 * (((frame / (6 + (index % 3)) + (index % 3)) % 2) as f64),
+            16.0,
+            16.0,
+            0.0,
+            0.0 + ((index % 2) as f64),
+        )?;
+
+        context.restore();
     }
 
     Ok(())

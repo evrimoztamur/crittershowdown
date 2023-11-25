@@ -80,6 +80,28 @@ impl Default for Game {
             ]);
         }
 
+        for i in 0..6 {
+            let offset = i;
+            let arc_size = TAU / 6 as f64;
+            let arc: f32 = arc_size as f32 * offset as f32 + 3.141592653589793 / 6.0;
+
+            game.insert_prop(vector![
+                0.0 + (arc * 1.0).cos() * 6.0,
+                0.0 + (arc * 1.0).sin() * 6.0
+            ]);
+        }
+
+        for i in 0..4 {
+            let offset = i;
+            let arc_size = TAU / 4.0;
+            let arc: f32 = arc_size as f32 * offset as f32 + 3.141592653589793 / 8.0;
+
+            game.insert_prop(vector![
+                0.0 + (arc * 1.0).cos() * 3.0,
+                0.0 + (arc * 1.0).sin() * 3.0
+            ]);
+        }
+
         game
     }
 }
@@ -122,7 +144,7 @@ impl Game {
 
         let turn_ticks = self.turn_ticks();
         let turn_tick_count = self.turn_tick_count();
-        let turn_tick_count_half= self.turn_tick_count_half();
+        let turn_tick_count_half = self.turn_tick_count_half();
 
         if turn_ticks == 0 {
             // At each N second interval, check for queued turns (which are sent from the server
@@ -160,7 +182,7 @@ impl Game {
 
     /// Duration of the turn in seconds
     pub fn turn_duration(&self) -> u64 {
-        10
+        20
     }
 
     /// num turn turn_tick_count
@@ -170,12 +192,12 @@ impl Game {
 
     /// num turn turn_tick_count
     pub fn turn_tick_count_half(&self) -> u64 {
-        3 * 60
+        4 * 60
     }
 
     /// num turn turn_tick_count
     pub fn turn_percentage_time_half(&self) -> f64 {
-        (3 * 60) as f64 / self.turn_tick_count() as f64
+        self.turn_tick_count_half() as f64 / self.turn_tick_count() as f64
     }
 
     // /// target tick
@@ -189,7 +211,7 @@ impl Game {
         let mut tip = 0;
 
         for (rigid_body, bug_data) in self.iter_bugs() {
-            if rigid_body.translation().magnitude() < self.capture_radius {
+            if rigid_body.translation().magnitude() < self.capture_radius && bug_data.health() > 1 {
                 match bug_data.team() {
                     Team::Red => tip += 1,
                     Team::Blue => tip -= 1,
@@ -237,10 +259,10 @@ impl Game {
     }
 
     /// bug collisions
-     fn bug_collisions(&self) -> Vec<((u128, u128), Point2<f32>)> {
+    fn bug_collisions(&self) -> Vec<((u128, u128), Point2<f32>)> {
         self.bug_collisions.clone()
     }
-    
+
     /// bug impacts
     pub fn bug_impacts(&self) -> Vec<((u128, u128), Point2<f32>)> {
         self.bug_impacts.clone()
@@ -494,7 +516,7 @@ impl Game {
             Message::Move(turn) => {
                 for (bug_index, impulse_intent) in turn.impulse_intents {
                     if let Some(bug_data) = self.bugs.get_mut(&bug_index) {
-                        if bug_data.team() == &player.team {
+                        if bug_data.team() == &player.team && bug_data.health() > 1 {
                             bug_data.set_impulse_intent(impulse_intent);
                         }
                     }

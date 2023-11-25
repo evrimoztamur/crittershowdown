@@ -155,10 +155,13 @@ async fn post_ready(
     Json(match lobbies.get_mut(&id) {
         Some(lobby) => match lobby.join_player(session_request.session_id, timestamp()) {
             Ok(_) => {
-                lobby.game.execute_turn(&Turn {
-                    timestamp: timestamp(),
-                    ..Default::default()
-                });
+                // lobby.game.execute_turn(&Turn {
+                //     timestamp: timestamp(),
+                //     ..Default::default()
+                // });
+
+                lobby.first_heartbeat = timestamp();
+
                 Message::Lobby(Box::new(lobby.clone()))
             }
             Err(err) => Message::LobbyError(err),

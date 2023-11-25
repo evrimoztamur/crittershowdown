@@ -112,7 +112,7 @@ impl Physics {
         let bug_colliders: Vec<_> = self
             .collider_set
             .iter()
-            .filter(|(_, collider)| (0x01..=0xff).contains(&collider.user_data))
+            .filter(|(_, collider)| (0x01..0xff).contains(&collider.user_data))
             .collect();
 
         let mut contacts = Vec::new();
