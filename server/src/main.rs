@@ -41,7 +41,7 @@ async fn main() {
         .route("/session", get(obtain_session))
         .with_state(state);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 8000));
+    let addr = SocketAddr::from(([127, 0, 0, 1], 8001));
 
     axum::Server::bind(&addr)
         .serve(app.into_make_service())
