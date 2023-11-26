@@ -97,12 +97,17 @@ pub fn draw_bugdata(
     index: usize,
     frame: usize,
 ) -> Result<(), JsValue> {
+    let bug_offset = match bug_data.sort() {
+        shared::BugSort::Beetle => 0.0,
+        shared::BugSort::Ladybug => 1.0,
+        shared::BugSort::Ant => 2.0,
+    };
 
     if bug_data.health() > 1 {
         draw_image_centered(
             context,
             atlas,
-            16.0 * ((index % 2) as f64),
+            16.0 * bug_offset,
             16.0 * (((frame / (6 + (index % 3)) + (index % 3)) % 2) as f64),
             16.0,
             16.0,
@@ -133,14 +138,14 @@ pub fn draw_bugdata(
                 0.0,
                 10.0,
             )?,
-        } 
-    }else {
+        }
+    } else {
         context.save();
         context.scale(1.0, -1.0)?;
         draw_image_centered(
             context,
             atlas,
-            16.0 * ((index % 2) as f64),
+            16.0 * bug_offset,
             16.0 * (((frame / (6 + (index % 3)) + (index % 3)) % 2) as f64),
             16.0,
             16.0,
@@ -178,7 +183,11 @@ pub fn draw_propdata(
     index: usize,
     frame: usize,
 ) -> Result<(), JsValue> {
-    draw_image_centered(context, atlas, 0.0, 144.0, 16.0, 16.0, 0.0, 0.0)?;
+    if index % 2 == 0 {
+        draw_image_centered(context, atlas, 0.0, 144.0, 16.0, 16.0, 0.0, 0.0)?;
+    } else {
+        draw_image_centered(context, atlas, 16.0, 144.0, 16.0, 16.0, 0.0, 0.0)?;
+    }
 
     Ok(())
 }

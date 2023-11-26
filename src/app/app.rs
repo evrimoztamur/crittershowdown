@@ -6,7 +6,7 @@ use web_sys::{
     KeyboardEvent, MouseEvent, TouchEvent,
 };
 
-use super::{AudioSystem, GameState, MainMenuState, Pointer};
+use super::{AudioSystem, GameState, MainMenuState, Pointer, SettingsMenuState};
 use crate::{app::State, draw::draw_image, net::get_session_id, storage, window};
 
 /// Errors concerning the [`App`].
@@ -22,6 +22,7 @@ impl From<LobbyError> for AppError {
 pub enum StateSort {
     MainMenu(MainMenuState),
     Game(GameState),
+    SettingsMenu(SettingsMenuState),
 }
 
 pub struct AppContext {
@@ -119,6 +120,9 @@ impl App {
                 StateSort::MainMenu(state) => {
                     state.draw(context, interface_context, atlas, &self.app_context)
                 }
+                StateSort::SettingsMenu(state) => {
+                    state.draw(context, interface_context, atlas, &self.app_context)
+                }
             };
         }
 
@@ -148,6 +152,18 @@ impl App {
         let next_state = match &mut self.state_sort {
             StateSort::Game(state) => state.tick(text_input, &self.app_context),
             StateSort::MainMenu(state) => state.tick(text_input, &self.app_context),
+            StateSort::SettingsMenu(state) => {
+                let next_state = state.tick(text_input, &self.app_context);
+
+                self.app_context
+                    .audio_system
+                    .set_music_volume(state.music_volume);
+                self.app_context
+                    .audio_system
+                    .set_clip_volume(state.clip_volume);
+
+                next_state
+            }
         };
 
         if let Some(next_state) = next_state {

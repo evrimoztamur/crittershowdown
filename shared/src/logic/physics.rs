@@ -10,6 +10,8 @@ use rapier2d::{
     prelude::{ColliderHandle, PointProjection, QueryFilter, QueryPipeline},
 };
 
+use crate::BugSort;
+
 /// Wrapper for rapier2d.
 pub struct Physics {
     physics_pipeline: PhysicsPipeline,
@@ -30,7 +32,24 @@ pub struct Physics {
 
 impl Physics {
     /// Inserts a new [`RigidBody`] for a [`Bug`].
-    pub fn insert_bug(&mut self, translation: Vector2<f32>, index: usize) -> RigidBodyHandle {
+    pub fn insert_bug(
+        &mut self,
+        translation: Vector2<f32>,
+        index: usize,
+        bug_sort: BugSort,
+    ) -> RigidBodyHandle {
+        let mass = match bug_sort {
+            BugSort::Beetle => 1.0,
+            BugSort::Ladybug => 0.9,
+            BugSort::Ant => 0.6,
+        };
+
+        let restitution = match bug_sort {
+            BugSort::Beetle => 0.7,
+            BugSort::Ladybug => 0.75,
+            BugSort::Ant => 0.95,
+        };
+
         let rigid_body = RigidBodyBuilder::dynamic()
             .ccd_enabled(true)
             .translation(translation)
@@ -39,10 +58,11 @@ impl Physics {
             .build();
 
         let collider = ColliderBuilder::ball(0.5)
-            .restitution(0.7)
+            .restitution(restitution)
+            .mass(mass)
             .user_data(index as u128)
             .build();
-        
+
         let ball_body_handle = self.rigid_body_set.insert(rigid_body);
 
         self.collider_set

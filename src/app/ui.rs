@@ -168,9 +168,9 @@ impl UIElement for ButtonElement {
                 if self.selected {
                     &"#007faa"
                 } else if self.hovered(pointer) {
-                    &"#aa5f00"
-                } else {
                     &"#7f1f00"
+                } else {
+                    &"#aa3f00"
                 }
             }
             LabelTheme::Bright => {

@@ -4,11 +4,11 @@ use shared::{Lobby, LobbySettings, LobbySort, Message};
 use wasm_bindgen::{closure::Closure, JsValue};
 use web_sys::{CanvasRenderingContext2d, HtmlCanvasElement, HtmlInputElement};
 
-use super::{GameState, State};
+use super::{GameState, State, SettingsMenuState};
 use crate::{
     app::{
-        Alignment, AppContext, ButtonElement, Interface, LabelTheme,
-        LabelTrim, StateSort, UIElement, UIEvent,
+        Alignment, AppContext, ButtonElement, Interface, LabelTheme, LabelTrim, StateSort,
+        UIElement, UIEvent,
     },
     draw::{draw_bugdata, draw_label, draw_text, draw_text_centered},
     net::{fetch, request_lobbies, MessagePool},
@@ -31,6 +31,7 @@ impl MainMenuState {}
 const BUTTON_PAGE_PREVIOUS: usize = 10;
 const BUTTON_PAGE_NEXT: usize = 11;
 const BUTTON_ARENA: usize = 20;
+const BUTTON_SETTINGS: usize = 21;
 
 const LOBBY_PAGE_SIZE: usize = 6;
 
@@ -71,76 +72,111 @@ impl State for MainMenuState {
         //     .collect();
         // console::log_1(&format!("{:?}", a).into());
 
-        for (i, (lobby_id, lobby)) in &self.displayed_lobbies {
-            let ir: usize = i - self.lobby_page * LOBBY_PAGE_SIZE;
-            let pointer = pointer.teleport((-(384 - 256) / 2, -(12 + ir as i32 * 48)));
-            context.save();
-            context.translate((384.0 - 256.0) / 2.0, 12.0 + ir as f64 * 48.0)?;
+        if self.displayed_lobbies.is_empty() {
             draw_label(
                 context,
                 atlas,
-                (0, 15),
-                (224, 24),
+                ((384 - 160) / 2, (360 - 64) / 2),
+                (160, 16),
                 "#2a1f00",
-                &crate::app::ContentElement::None,
+                &crate::app::ContentElement::Text(
+                    "No lobbies available.".to_string(),
+                    Alignment::Center,
+                ),
                 &pointer,
                 frame,
                 &LabelTrim::Round,
                 false,
             )?;
 
-            if pointer.in_region((-8, 0), (72, 16)) {
+            // Create a new one to start playing!
+            draw_label(
+                context,
+                atlas,
+                ((384 - 240) / 2, (360 - 64) / 2 + 24),
+                (240, 24),
+                "#007f00",
+                &crate::app::ContentElement::Text(
+                    "Create a new one to start playing!".to_string(),
+                    Alignment::Center,
+                ),
+                &pointer,
+                frame,
+                &LabelTrim::Round,
+                false,
+            )?;
+        } else {
+            for (i, (lobby_id, lobby)) in &self.displayed_lobbies {
+                let ir: usize = i - self.lobby_page * LOBBY_PAGE_SIZE;
+                let pointer = pointer.teleport((-(384 - 256) / 2, -(12 + ir as i32 * 48)));
+                context.save();
+                context.translate((384.0 - 256.0) / 2.0, 12.0 + ir as f64 * 48.0)?;
                 draw_label(
                     context,
                     atlas,
-                    (-8, 0),
-                    (72, 16),
-                    "#2a9f55",
-                    &crate::app::ContentElement::Text(format!("{lobby_id}"), Alignment::Center),
+                    (0, 15),
+                    (224, 24),
+                    "#2a1f00",
+                    &crate::app::ContentElement::None,
                     &pointer,
                     frame,
-                    &LabelTrim::Glorious,
+                    &LabelTrim::Round,
                     false,
                 )?;
-            } else {
-                draw_label(
-                    context,
-                    atlas,
-                    (-8, 0),
-                    (72, 16),
-                    "#2a9f55",
-                    &crate::app::ContentElement::Text(
-                        format!("Lobby {}", i + 1),
-                        Alignment::Start(72),
-                    ),
-                    &pointer,
-                    frame,
-                    &LabelTrim::Glorious,
-                    false,
-                )?;
-            }
 
-            draw_text(context, atlas, 72.0, 4.0, "King of the Hill")?;
-
-            context.save();
-            if (i) % 2 == 1 {
-                context.translate(12.0, 36.0)?;
-            } else {
-                context.translate(12.0, 32.0)?;
-            }
-            for (j, bug) in lobby.game.iter_bugdata().enumerate() {
-                if (j + i) % 2 == 0 {
-                    context.translate(0.0, 4.0)?;
+                if pointer.in_region((-8, 0), (72, 16)) {
+                    draw_label(
+                        context,
+                        atlas,
+                        (-8, 0),
+                        (72, 16),
+                        "#2a9f55",
+                        &crate::app::ContentElement::Text(format!("{lobby_id}"), Alignment::Center),
+                        &pointer,
+                        frame,
+                        &LabelTrim::Glorious,
+                        false,
+                    )?;
                 } else {
-                    context.translate(0.0, -4.0)?;
+                    draw_label(
+                        context,
+                        atlas,
+                        (-8, 0),
+                        (72, 16),
+                        "#2a9f55",
+                        &crate::app::ContentElement::Text(
+                            format!("Lobby {}", i + 1),
+                            Alignment::Start(72),
+                        ),
+                        &pointer,
+                        frame,
+                        &LabelTrim::Glorious,
+                        false,
+                    )?;
                 }
 
-                draw_bugdata(context, atlas, bug, i * j + j, frame)?;
-                context.translate(12.0, 0.0)?;
-            }
+                draw_text(context, atlas, 72.0, 4.0, "King of the Hill")?;
 
-            context.restore();
-            context.restore();
+                context.save();
+                if (i) % 2 == 1 {
+                    context.translate(12.0, 36.0)?;
+                } else {
+                    context.translate(12.0, 32.0)?;
+                }
+                for (j, bug) in lobby.game.iter_bugdata().enumerate() {
+                    if (j + i) % 2 == 0 {
+                        context.translate(0.0, 4.0)?;
+                    } else {
+                        context.translate(0.0, -4.0)?;
+                    }
+
+                    draw_bugdata(context, atlas, bug, i * j + j, frame)?;
+                    context.translate(12.0, 0.0)?;
+                }
+
+                context.restore();
+                context.restore();
+            }
         }
 
         Ok(())
@@ -170,6 +206,8 @@ impl State for MainMenuState {
             } else if let BUTTON_PAGE_NEXT = value {
                 self.lobby_page = self.lobby_page.saturating_add(1);
                 self.lobby_list_dirty = true;
+            } else if let BUTTON_SETTINGS = value {
+                return Some(StateSort::SettingsMenu(SettingsMenuState::default()));
             }
         }
 
@@ -264,13 +302,13 @@ impl Default for MainMenuState {
             crate::app::ContentElement::Text("New Lobby".to_string(), Alignment::Center),
         );
 
-        let button_join_private: ButtonElement = ButtonElement::new(
+        let button_settings: ButtonElement = ButtonElement::new(
             (384 - 120, 360 - 32),
             (112, 24),
-            BUTTON_ARENA,
-            LabelTrim::Glorious,
+            BUTTON_SETTINGS,
+            LabelTrim::Return,
             LabelTheme::Default,
-            crate::app::ContentElement::Text("Join Private".to_string(), Alignment::Center),
+            crate::app::ContentElement::Text("Settings".to_string(), Alignment::Center),
         );
 
         let button_page_previous: ButtonElement = ButtonElement::new(
@@ -293,7 +331,7 @@ impl Default for MainMenuState {
 
         let interface = Interface::new(vec![
             button_new_lobby.boxed(),
-            // button_join_private.boxed(),
+            button_settings.boxed(),
             button_page_previous.boxed(),
             button_page_next.boxed(),
         ]);

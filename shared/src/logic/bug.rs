@@ -8,15 +8,18 @@ use crate::Team;
 pub enum BugSort {
     /// A water beetle
     #[default]
-    WaterBeetle,
+    Beetle,
     /// A fire beetle
-    FireBeetle,
+    Ladybug,
+    /// Ant
+    Ant,
 }
 impl BugSort {
     fn max_health(&self) -> usize {
         match self {
-            BugSort::WaterBeetle => 4,
-            BugSort::FireBeetle => 4,
+            BugSort::Beetle => 5,
+            BugSort::Ladybug => 4,
+            BugSort::Ant => 3,
         }
     }
 }
@@ -73,7 +76,8 @@ impl BugData {
 
     /// set health
     pub fn add_health(&mut self, delta: isize) {
-        self.health = (self.health as isize + delta).clamp(0, self.sort.max_health() as isize) as usize;
+        self.health =
+            (self.health as isize + delta).clamp(0, self.sort.max_health() as isize) as usize;
     }
 
     /// TODO docs

@@ -9,7 +9,7 @@ use rapier2d::{
     geometry::{Collider, ColliderHandle, ContactData},
 };
 
-use crate::{BugData, Message, Physics, Player, PropData, Result, Team, Turn};
+use crate::{BugData, BugSort, Message, Physics, Player, PropData, Result, Team, Turn};
 
 /// Game structure.
 #[derive(Clone)]
@@ -65,7 +65,11 @@ impl Default for Game {
                     0.0 + (net_offset).cos() * 8.0,
                     0.0 + (net_offset).sin() * 8.0
                 ],
-                BugData::new(crate::BugSort::WaterBeetle, team),
+                match i % 3 {
+                    0 => BugData::new(BugSort::Beetle, team),
+                    1 => BugData::new(BugSort::Ladybug, team),
+                    _ => BugData::new(BugSort::Ant, team),
+                },
             );
         }
 
@@ -182,7 +186,7 @@ impl Game {
 
     /// Duration of the turn in seconds
     pub fn turn_duration(&self) -> u64 {
-        20
+        16
     }
 
     /// num turn turn_tick_count
@@ -253,8 +257,14 @@ impl Game {
             let (rb_a, bug_a) = self.get_bug_mut(a as usize).unwrap();
             bug_a.add_health(-1);
 
+            let attacker_sort = *bug_a.sort();
+
             let (rb_b, bug_b) = self.get_bug_mut(b as usize).unwrap();
             bug_b.add_health(-1);
+
+            if attacker_sort == BugSort::Ant {
+                bug_b.add_health(-1);
+            }
         }
     }
 
@@ -395,7 +405,9 @@ impl Game {
         bug_data: BugData,
     ) -> (usize, RigidBodyHandle) {
         let bug_index = self.bugs.len() + 0x01;
-        let rigid_body_handle = self.physics.insert_bug(translation, bug_index);
+        let rigid_body_handle = self
+            .physics
+            .insert_bug(translation, bug_index, *bug_data.sort());
 
         self.bugs.insert(bug_index, bug_data);
         self.bug_handles.insert(bug_index, rigid_body_handle);
