@@ -248,7 +248,7 @@ impl Game {
                 if rb_a.linvel().magnitude() > rb_b.linvel().magnitude() {
                     self.bug_impacts.push(((a, b), position));
                 } else {
-                    self.bug_impacts.push(((a, b), position));
+                    self.bug_impacts.push(((b, a), position));
                 }
             }
         }
